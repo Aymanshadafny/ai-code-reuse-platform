@@ -19,6 +19,7 @@ import {
     Activity,
     CheckCircle2,
     XCircle,
+    Files,
 } from "lucide-react";
 
 export default function ProjectDetail() {
@@ -31,6 +32,48 @@ export default function ProjectDetail() {
     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
     const [popup, setPopup] = useState(null);
+
+    const CODE_EXTENSIONS = [
+        ".py",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".java",
+        ".cs",
+        ".cpp",
+        ".c",
+        ".html",
+        ".css",
+    ];
+
+    const getFileExtension = (fileName = "") => {
+        const cleanName = fileName.toLowerCase();
+        const lastDot = cleanName.lastIndexOf(".");
+        if (lastDot === -1) return "";
+        return cleanName.slice(lastDot);
+    };
+
+    const getAllProjectFilesCount = () => {
+        if (analysis?.files && Array.isArray(analysis.files)) {
+            return analysis.files.length;
+        }
+
+        return analysis?.total_project_files || analysis?.total_files || 0;
+    };
+
+    const getAnalyzedCodeFilesCount = () => {
+        if (analysis?.files && Array.isArray(analysis.files)) {
+            return analysis.files.filter((fileName) =>
+                CODE_EXTENSIONS.includes(getFileExtension(fileName))
+            ).length;
+        }
+
+        return analysis?.analyzed_code_files || analysis?.total_files || 0;
+    };
+
+    const allProjectFiles = getAllProjectFilesCount();
+    const analyzedCodeFiles = getAnalyzedCodeFilesCount();
 
     const showPopup = (message, type = "success") => {
         setPopup({ message, type });
@@ -119,8 +162,8 @@ export default function ProjectDetail() {
                         >
                             <div
                                 className={`mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full ${popup.type === "success"
-                                        ? "bg-green-100 text-green-600"
-                                        : "bg-red-100 text-red-600"
+                                    ? "bg-green-100 text-green-600"
+                                    : "bg-red-100 text-red-600"
                                     }`}
                             >
                                 {popup.type === "success" ? (
@@ -132,8 +175,8 @@ export default function ProjectDetail() {
 
                             <h2
                                 className={`text-3xl font-black ${popup.type === "success"
-                                        ? "text-green-600"
-                                        : "text-red-600"
+                                    ? "text-green-600"
+                                    : "text-red-600"
                                     }`}
                             >
                                 {popup.type === "success" ? "Success!" : "Failed!"}
@@ -149,8 +192,8 @@ export default function ProjectDetail() {
                                     animate={{ width: "0%" }}
                                     transition={{ duration: 3, ease: "linear" }}
                                     className={`h-full ${popup.type === "success"
-                                            ? "bg-green-500"
-                                            : "bg-red-500"
+                                        ? "bg-green-500"
+                                        : "bg-red-500"
                                         }`}
                                 />
                             </div>
@@ -395,14 +438,35 @@ export default function ProjectDetail() {
                                         </button>
                                     </div>
 
-                                    <div className="grid gap-5 md:grid-cols-4">
+                                    <div className="grid gap-5 md:grid-cols-5">
                                         <div className="rounded-[24px] bg-green-50 p-5">
-                                            <p className="text-sm font-bold text-green-700">
-                                                Total Files
-                                            </p>
+                                            <div className="mb-2 flex items-center gap-2">
+                                                <Files size={18} className="text-green-700" />
+                                                <p className="text-sm font-bold text-green-700">
+                                                    All Project Files
+                                                </p>
+                                            </div>
                                             <h3 className="mt-3 text-3xl font-black text-gray-900">
-                                                {analysis.total_files}
+                                                {allProjectFiles}
                                             </h3>
+                                            <p className="mt-2 text-xs font-semibold text-gray-500">
+                                                Every file inside ZIP
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-[24px] bg-emerald-50 p-5">
+                                            <div className="mb-2 flex items-center gap-2">
+                                                <FileCode size={18} className="text-emerald-700" />
+                                                <p className="text-sm font-bold text-emerald-700">
+                                                    Analyzed Code Files
+                                                </p>
+                                            </div>
+                                            <h3 className="mt-3 text-3xl font-black text-gray-900">
+                                                {analyzedCodeFiles}
+                                            </h3>
+                                            <p className="mt-2 text-xs font-semibold text-gray-500">
+                                                Only real code files
+                                            </p>
                                         </div>
 
                                         <div className="rounded-[24px] bg-blue-50 p-5">
@@ -410,7 +474,7 @@ export default function ProjectDetail() {
                                                 Total Lines
                                             </p>
                                             <h3 className="mt-3 text-3xl font-black text-gray-900">
-                                                {analysis.total_lines}
+                                                {analysis.total_lines || 0}
                                             </h3>
                                         </div>
 
@@ -419,7 +483,7 @@ export default function ProjectDetail() {
                                                 Duplicate Lines
                                             </p>
                                             <h3 className="mt-3 text-3xl font-black text-gray-900">
-                                                {analysis.duplicate_lines}
+                                                {analysis.duplicate_lines || 0}
                                             </h3>
                                         </div>
 
@@ -428,7 +492,7 @@ export default function ProjectDetail() {
                                                 Duplication %
                                             </p>
                                             <h3 className="mt-3 text-3xl font-black text-red-500">
-                                                {analysis.duplicate_percentage}%
+                                                {analysis.duplicate_percentage || 0}%
                                             </h3>
                                         </div>
                                     </div>
@@ -442,21 +506,25 @@ export default function ProjectDetail() {
                                         </div>
 
                                         <p className="mt-3 text-sm leading-7 text-gray-600">
-                                            Your project contains{" "}
+                                            Your ZIP contains{" "}
                                             <span className="font-bold text-gray-900">
-                                                {analysis.total_files}
+                                                {allProjectFiles}
                                             </span>{" "}
-                                            files and{" "}
+                                            total project files. From these files, the system analyzed{" "}
                                             <span className="font-bold text-gray-900">
-                                                {analysis.total_lines}
+                                                {analyzedCodeFiles}
+                                            </span>{" "}
+                                            code files and counted{" "}
+                                            <span className="font-bold text-gray-900">
+                                                {analysis.total_lines || 0}
                                             </span>{" "}
                                             lines of code. The system found{" "}
                                             <span className="font-bold text-gray-900">
-                                                {analysis.duplicate_lines}
+                                                {analysis.duplicate_lines || 0}
                                             </span>{" "}
                                             duplicate lines, with a duplication rate of{" "}
                                             <span className="font-bold text-red-500">
-                                                {analysis.duplicate_percentage}%
+                                                {analysis.duplicate_percentage || 0}%
                                             </span>.
                                         </p>
                                     </div>
@@ -473,7 +541,7 @@ export default function ProjectDetail() {
                                         </h3>
 
                                         <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-gray-500">
-                                            Run code analysis to see total files, total lines, duplicate lines, and duplication percentage.
+                                            Run code analysis to see all project files, analyzed code files, total lines, duplicate lines, and duplication percentage.
                                         </p>
 
                                         <button

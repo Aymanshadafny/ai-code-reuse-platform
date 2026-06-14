@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import Navbar from "../../components/Navbar";
 import Sidebar from "../../components/Sidebar";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import API from "../../api/api";
 import { useNavigate } from "react-router-dom";
+import Toast from "../../components/Toast";
 import {
     FolderPlus,
     UploadCloud,
@@ -15,6 +16,7 @@ import {
     ArrowRight,
     Layers3,
     ShieldCheck,
+    Trash2,
 } from "lucide-react";
 
 export default function StudentProjects() {
@@ -22,6 +24,14 @@ export default function StudentProjects() {
     const [collapsed, setCollapsed] = useState(false);
     const [file, setFile] = useState(null);
     const [projects, setProjects] = useState([]);
+    const [deleteProjectId, setDeleteProjectId] = useState(null);
+    const [toast, setToast] = useState(null);
+
+    const showToast = (message, type = "success") => {
+        setToast({ message, type });
+    };
+
+
 
     const navigate = useNavigate();
 
@@ -63,7 +73,7 @@ export default function StudentProjects() {
 
     const handleUpload = async () => {
         if (!projectName || !file) {
-            alert("Please add project name and file");
+            showToast("Please add project name and ZIP file", "info");
             return;
         }
 
@@ -78,21 +88,53 @@ export default function StudentProjects() {
                 },
             });
 
-            alert("Project uploaded 🚀");
+            showToast("Project uploaded successfully", "success");
 
             setProjects((prev) => [res.data, ...prev]);
 
             setProjectName("");
             setFile(null);
-
         } catch (err) {
-            console.log(err.response?.data);
-            alert("Upload failed ❌");
+            console.log("UPLOAD PROJECT ERROR:", err.response?.data || err);
+            showToast("Upload failed. Please try again.", "error");
+        }
+    };
+
+    const handleDeleteProject = (projectId) => {
+        setDeleteProjectId(projectId);
+    };
+
+    const confirmDeleteProject = async () => {
+        if (!deleteProjectId) return;
+
+        try {
+            await API.delete(`/projects/${deleteProjectId}/delete/`);
+
+            setProjects((prev) =>
+                prev.filter((project) => project.id !== deleteProjectId)
+            );
+
+            setDeleteProjectId(null);
+            showToast("Project deleted successfully", "success");
+        } catch (err) {
+            console.log("DELETE PROJECT ERROR:", err.response?.data || err);
+
+            setDeleteProjectId(null);
+            showToast("Failed to delete project. Please try again.", "error");
         }
     };
 
     return (
         <div className="min-h-screen bg-[#f5f8f6] text-slate-900">
+            <AnimatePresence>
+                {toast && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => setToast(null)}
+                    />
+                )}
+            </AnimatePresence>
             {/* Sidebar */}
             <Sidebar
                 role="STUDENT"
@@ -525,16 +567,37 @@ export default function StudentProjects() {
                                                         </p>
                                                     </div>
 
-                                                    <button
-                                                        onClick={() => navigate(`/dashboard/student/projects/${project.id}`)}
-                                                        className="
-        rounded-xl bg-[#041b14] px-4 py-2
-        text-sm font-bold text-white
-        transition hover:scale-[1.03]
-    "
-                                                    >
-                                                        Open
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        {/* Open Project */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => navigate(`/dashboard/student/projects/${project.id}`)}
+                                                            title="Open project"
+                                                            className="
+            flex h-11 w-11 items-center justify-center
+            rounded-2xl bg-[#041b14] text-white
+            shadow-sm transition
+            hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md
+        "
+                                                        >
+                                                            <ArrowRight size={18} />
+                                                        </button>
+
+                                                        {/* Delete Project */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteProject(project.id)}
+                                                            title="Delete project"
+                                                            className="
+            flex h-11 w-11 items-center justify-center
+            rounded-2xl bg-red-50 text-red-600
+            shadow-sm transition
+            hover:-translate-y-0.5 hover:bg-red-100 hover:shadow-md
+        "
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -547,6 +610,57 @@ export default function StudentProjects() {
                     </div>
                 </main>
             </div>
+
+            {/* DELETE CONFIRMATION MODAL */}
+            <AnimatePresence>
+                {deleteProjectId && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.85, y: 30 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                            className="w-full max-w-md rounded-[30px] border border-white bg-white p-7 text-center shadow-2xl"
+                        >
+                            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                                <Trash2 size={34} />
+                            </div>
+
+                            <h2 className="text-2xl font-black text-slate-950">
+                                Delete Project?
+                            </h2>
+
+                            <p className="mt-3 text-sm leading-7 text-slate-500">
+                                Are you sure you want to delete this project? This action cannot be undone.
+                            </p>
+
+                            <div className="mt-7 flex justify-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setDeleteProjectId(null)}
+                                    className="rounded-2xl bg-slate-100 px-6 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-200"
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={confirmDeleteProject}
+                                    className="rounded-2xl bg-red-500 px-6 py-3 text-sm font-black text-white shadow-lg shadow-red-500/20 transition hover:bg-red-600"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
+
 }

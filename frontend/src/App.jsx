@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import StudentProjects from "./pages/projects/StudentProjects";
 import AdminProjects from "./pages/projects/AdminProjects";
 import AdminUsers from "./pages/projects/AdminUsers";
+import AdminReports from "./pages/projects/AdminReports";
 import ProjectDetail from "./pages/projects/ProjectDetail";
 import ProjectResults from "./pages/projects/ProjectResults";
 import FileViewer from "./pages/projects/FileViewer";
@@ -140,6 +141,15 @@ function App() {
           element={
             <ProtectedRoute>
               <AdminUsers />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/admin/reports"
+          element={
+            <ProtectedRoute>
+              <AdminReports />
             </ProtectedRoute>
           }
         />

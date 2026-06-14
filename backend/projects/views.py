@@ -2,21 +2,25 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework import status
-from rest_framework.generics import RetrieveAPIView
-from .models import Project, Task
-from .serializers import ProjectSerializer
-from rest_framework.generics import ListCreateAPIView
-from .serializers import TaskSerializer
+from rest_framework.generics import RetrieveAPIView, ListCreateAPIView
+
+from django.contrib.auth.models import User
+from django.db.models import Avg
+from django.http import HttpResponse
+
 import zipfile
 from collections import Counter
 from pathlib import Path
 import urllib.parse
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
+import os
 
-from .models import Project, AnalysisResult
-from .serializers import AnalysisResultSerializer
+from .models import Project, Task, AnalysisResult, ActivityLog
+from .serializers import (
+    ProjectSerializer,
+    TaskSerializer,
+    AnalysisResultSerializer,
+    ActivityLogSerializer,
+)
 from .ai_utils import (
     analyze_code_with_openai,
     analyze_task_with_openai,
@@ -24,51 +28,84 @@ from .ai_utils import (
 )
 
 
+# ==========================================================
+# ACTIVITY LOG HELPER
+# ==========================================================
+def create_activity_log(request, action, status_code=200, message="", project_name=""):
+    try:
+        ActivityLog.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            action=action,
+            method=request.method,
+            path=request.path,
+            status_code=status_code,
+            message=message,
+            project_name=project_name,
+        )
+    except Exception:
+        pass
+
+
+# ==========================================================
+# PROJECT LIST / CREATE
+# ==========================================================
 class ProjectListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    # 🔥 GET → List projects
     def get(self, request):
-        # ✅ Admin sees ALL projects
         if request.user.is_superuser:
             projects = Project.objects.all().order_by("-created_at")
         else:
-            # ✅ Student sees ONLY their projects
             projects = Project.objects.filter(user=request.user).order_by("-created_at")
 
         serializer = ProjectSerializer(projects, many=True)
         return Response(serializer.data)
 
-    # 🔥 POST → Create project
     def post(self, request):
         name = request.data.get("name")
         file = request.FILES.get("file")
 
-        # ❌ Validation
         if not name or not file:
             return Response(
                 {"error": "Project name and file required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ✅ Create project
         project = Project.objects.create(
             user=request.user,
             name=name,
             file=file,
         )
 
-        serializer = ProjectSerializer(project)
+        create_activity_log(
+            request,
+            "PROJECT_UPLOADED",
+            status_code=201,
+            message=f"Project uploaded: {project.name}",
+            project_name=project.name,
+        )
 
+        serializer = ProjectSerializer(project)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+# ==========================================================
+# PROJECT DETAIL
+# ==========================================================
 class ProjectDetailView(RetrieveAPIView):
-    queryset = Project.objects.all()
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return Project.objects.all()
 
+        return Project.objects.filter(user=self.request.user)
+
+
+# ==========================================================
+# TASK LIST / CREATE
+# ==========================================================
 class TaskListCreateView(ListCreateAPIView):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
@@ -76,20 +113,45 @@ class TaskListCreateView(ListCreateAPIView):
     def get_queryset(self):
         project_id = self.kwargs["project_id"]
 
+        if self.request.user.is_superuser:
+            return Task.objects.filter(project_id=project_id).order_by("-created_at")
+
         return Task.objects.filter(
-            project_id=project_id, project__user=self.request.user
+            project_id=project_id,
+            project__user=self.request.user,
         ).order_by("-created_at")
 
     def perform_create(self, serializer):
-        serializer.save(project_id=self.kwargs["project_id"])
+        project_id = self.kwargs["project_id"]
+
+        if self.request.user.is_superuser:
+            project = Project.objects.get(id=project_id)
+        else:
+            project = Project.objects.get(id=project_id, user=self.request.user)
+
+        task = serializer.save(project=project)
+
+        create_activity_log(
+            self.request,
+            "TASK_CREATED",
+            status_code=201,
+            message=f"Task created: {task.name}",
+            project_name=project.name,
+        )
 
 
+# ==========================================================
+# ANALYZE PROJECT
+# ==========================================================
 class AnalyzeProjectView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
         try:
-            project = Project.objects.get(id=pk, user=request.user)
+            if request.user.is_superuser:
+                project = Project.objects.get(id=pk)
+            else:
+                project = Project.objects.get(id=pk, user=request.user)
         except Project.DoesNotExist:
             return Response({"error": "Project not found"}, status=404)
 
@@ -97,7 +159,8 @@ class AnalyzeProjectView(APIView):
 
         if not zipfile.is_zipfile(zip_path):
             return Response(
-                {"error": "Uploaded file is not a valid ZIP file"}, status=400
+                {"error": "Uploaded file is not a valid ZIP file"},
+                status=400,
             )
 
         code_extensions = [
@@ -118,13 +181,11 @@ class AnalyzeProjectView(APIView):
         all_lines = []
         file_structure = []
 
-        # 🔥 READ ZIP FILE
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             for file_name in zip_ref.namelist():
                 if file_name.endswith("/"):
                     continue
 
-                # ✅ SAVE FILE STRUCTURE
                 file_structure.append(file_name)
 
                 ext = Path(file_name).suffix.lower()
@@ -144,7 +205,6 @@ class AnalyzeProjectView(APIView):
                 for line in content.splitlines():
                     clean = line.strip()
 
-                    # ❌ ignore useless lines
                     if (
                         not clean
                         or len(clean) < 15
@@ -163,21 +223,17 @@ class AnalyzeProjectView(APIView):
 
         total_lines = len(all_lines)
 
-        # 🔥 DUPLICATE LOGIC
         line_counts = Counter(all_lines)
-
         duplicate_lines = sum(count - 1 for count in line_counts.values() if count > 1)
 
         duplicate_percentage = 0
         if total_lines > 0:
             duplicate_percentage = round((duplicate_lines / total_lines) * 100, 2)
 
-        # 🔥 SMART TOP DUPLICATES (IMPORTANT FIX)
         top_duplicates = []
 
         for line, count in line_counts.items():
             if count > 1:
-                # ❌ Skip useless / common patterns
                 if (
                     len(line) < 25
                     or line in ["{", "}", "(", ")", ";"]
@@ -192,15 +248,14 @@ class AnalyzeProjectView(APIView):
 
                 top_duplicates.append({"line": line, "count": count})
 
-        # ✅ Sort by most repeated
-        top_duplicates = sorted(top_duplicates, key=lambda x: x["count"], reverse=True)[
-            :5
-        ]
+        top_duplicates = sorted(
+            top_duplicates,
+            key=lambda x: x["count"],
+            reverse=True,
+        )[:5]
 
-        # 🔥 AI ANALYSIS
         ai_suggestions = analyze_code_with_openai(zip_path)
 
-        # 🔥 SAVE TO DATABASE (same as before)
         AnalysisResult.objects.update_or_create(
             project=project,
             defaults={
@@ -212,14 +267,23 @@ class AnalyzeProjectView(APIView):
             },
         )
 
-        # 🔥 RETURN ENHANCED RESPONSE (IMPORTANT)
+        create_activity_log(
+            request,
+            "PROJECT_ANALYZED",
+            status_code=201,
+            message=(
+                f"Project analyzed. Files: {total_files}, "
+                f"Lines: {total_lines}, Duplicates: {duplicate_lines}"
+            ),
+            project_name=project.name,
+        )
+
         return Response(
             {
                 "total_files": total_files,
                 "total_lines": total_lines,
                 "duplicate_lines": duplicate_lines,
                 "duplicate_percentage": duplicate_percentage,
-                # 🚀 NEW DATA FOR FRONTEND
                 "files": file_structure,
                 "top_duplicates": top_duplicates,
                 "ai_suggestions": ai_suggestions,
@@ -228,12 +292,18 @@ class AnalyzeProjectView(APIView):
         )
 
 
+# ==========================================================
+# PROJECT ANALYSIS RESULT
+# ==========================================================
 class ProjectAnalysisView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         try:
-            project = Project.objects.get(id=pk, user=request.user)
+            if request.user.is_superuser:
+                project = Project.objects.get(id=pk)
+            else:
+                project = Project.objects.get(id=pk, user=request.user)
         except Project.DoesNotExist:
             return Response({"error": "Project not found"}, status=404)
 
@@ -267,12 +337,13 @@ class ProjectAnalysisView(APIView):
                 file_structure.append(file_name)
 
                 ext = Path(file_name).suffix.lower()
+
                 if ext not in code_extensions:
                     continue
 
                 try:
                     content = zip_ref.read(file_name).decode("utf-8", errors="ignore")
-                except:
+                except Exception:
                     continue
 
                 lines = []
@@ -299,7 +370,6 @@ class ProjectAnalysisView(APIView):
         total_lines = len(all_lines)
 
         line_counts = Counter(all_lines)
-
         duplicate_lines = sum(count - 1 for count in line_counts.values() if count > 1)
 
         duplicate_percentage = (
@@ -324,11 +394,12 @@ class ProjectAnalysisView(APIView):
 
                 top_duplicates.append({"line": line, "count": count})
 
-        top_duplicates = sorted(top_duplicates, key=lambda x: x["count"], reverse=True)[
-            :5
-        ]
+        top_duplicates = sorted(
+            top_duplicates,
+            key=lambda x: x["count"],
+            reverse=True,
+        )[:5]
 
-        # ✅ Get AI from DB (already saved)
         analysis = AnalysisResult.objects.filter(project=project).last()
 
         return Response(
@@ -344,10 +415,9 @@ class ProjectAnalysisView(APIView):
         )
 
 
-from django.contrib.auth.models import User
-from django.db.models import Avg, Count
-
-
+# ==========================================================
+# ADMIN DASHBOARD
+# ==========================================================
 class AdminDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
@@ -356,13 +426,11 @@ class AdminDashboardView(APIView):
         total_projects = Project.objects.count()
         total_reports = AnalysisResult.objects.count()
 
-        # ✅ NEW: average duplication
         avg_duplication = (
             AnalysisResult.objects.aggregate(avg=Avg("duplicate_percentage"))["avg"]
             or 0
         )
 
-        # ✅ NEW: AI usage (how many analyzed)
         ai_usage = AnalysisResult.objects.count()
 
         return Response(
@@ -376,6 +444,50 @@ class AdminDashboardView(APIView):
         )
 
 
+# ==========================================================
+# ADMIN REPORTS
+# ==========================================================
+class AdminReportsView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request):
+        logs = ActivityLog.objects.all().order_by("-created_at")[:100]
+
+        total_requests = ActivityLog.objects.count()
+        project_uploads = ActivityLog.objects.filter(action="PROJECT_UPLOADED").count()
+        project_deleted = ActivityLog.objects.filter(action="PROJECT_DELETED").count()
+        project_analyzed = ActivityLog.objects.filter(action="PROJECT_ANALYZED").count()
+        task_created = ActivityLog.objects.filter(action="TASK_CREATED").count()
+        task_analyzed = ActivityLog.objects.filter(action="TASK_ANALYZED").count()
+        code_fixed = ActivityLog.objects.filter(action="CODE_FIXED").count()
+        file_opened = ActivityLog.objects.filter(action="FILE_OPENED").count()
+        file_downloaded = ActivityLog.objects.filter(action="FILE_DOWNLOADED").count()
+        failed_requests = ActivityLog.objects.filter(status_code__gte=400).count()
+
+        serializer = ActivityLogSerializer(logs, many=True)
+
+        return Response(
+            {
+                "stats": {
+                    "total_requests": total_requests,
+                    "project_uploads": project_uploads,
+                    "project_deleted": project_deleted,
+                    "project_analyzed": project_analyzed,
+                    "task_created": task_created,
+                    "task_analyzed": task_analyzed,
+                    "code_fixed": code_fixed,
+                    "file_opened": file_opened,
+                    "file_downloaded": file_downloaded,
+                    "failed_requests": failed_requests,
+                },
+                "logs": serializer.data,
+            }
+        )
+
+
+# ==========================================================
+# DELETE PROJECT
+# ==========================================================
 class ProjectDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -383,9 +495,18 @@ class ProjectDeleteView(APIView):
         try:
             project = Project.objects.get(id=pk)
 
-            # ❌ only admin can delete
-            if not request.user.is_superuser:
+            if not request.user.is_superuser and project.user != request.user:
                 return Response({"error": "Unauthorized"}, status=403)
+
+            project_name = project.name
+
+            create_activity_log(
+                request,
+                "PROJECT_DELETED",
+                status_code=200,
+                message=f"Project deleted: {project_name}",
+                project_name=project_name,
+            )
 
             project.delete()
 
@@ -395,6 +516,9 @@ class ProjectDeleteView(APIView):
             return Response({"error": "Project not found"}, status=404)
 
 
+# ==========================================================
+# ADMIN USERS
+# ==========================================================
 class AdminUsersView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
@@ -402,6 +526,7 @@ class AdminUsersView(APIView):
         users = User.objects.all()
 
         data = []
+
         for user in users:
             data.append(
                 {
@@ -418,6 +543,9 @@ class AdminUsersView(APIView):
         return Response(data)
 
 
+# ==========================================================
+# TOGGLE USER STATUS
+# ==========================================================
 class ToggleUserStatusView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
@@ -425,7 +553,6 @@ class ToggleUserStatusView(APIView):
         try:
             user = User.objects.get(id=user_id)
 
-            # Do not allow disabling super admin
             if user.is_superuser:
                 return Response(
                     {"error": "You cannot disable a superuser."},
@@ -452,28 +579,46 @@ class ToggleUserStatusView(APIView):
             )
 
 
+# ==========================================================
+# TASK DETAIL
+# ==========================================================
 class TaskDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, project_id, task_id):
         try:
-            task = Task.objects.get(
-                id=task_id, project_id=project_id, project__user=request.user
-            )
+            if request.user.is_superuser:
+                task = Task.objects.get(id=task_id, project_id=project_id)
+            else:
+                task = Task.objects.get(
+                    id=task_id,
+                    project_id=project_id,
+                    project__user=request.user,
+                )
+
             serializer = TaskSerializer(task)
             return Response(serializer.data)
+
         except Task.DoesNotExist:
             return Response({"error": "Task not found"}, status=404)
 
 
+# ==========================================================
+# ANALYZE TASK
+# ==========================================================
 class AnalyzeTaskView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, project_id, task_id):
         try:
-            task = Task.objects.get(
-                id=task_id, project_id=project_id, project__user=request.user
-            )
+            if request.user.is_superuser:
+                task = Task.objects.get(id=task_id, project_id=project_id)
+            else:
+                task = Task.objects.get(
+                    id=task_id,
+                    project_id=project_id,
+                    project__user=request.user,
+                )
         except Task.DoesNotExist:
             return Response({"error": "Task not found"}, status=404)
 
@@ -488,46 +633,83 @@ class AnalyzeTaskView(APIView):
         task.ai_response = ai_response
         task.save()
 
+        create_activity_log(
+            request,
+            "TASK_ANALYZED",
+            status_code=200,
+            message=f"Task analyzed: {task.name}",
+            project_name=task.project.name,
+        )
+
         serializer = TaskSerializer(task)
         return Response(serializer.data)
 
 
+# ==========================================================
+# FIX TASK CODE
+# ==========================================================
 class FixTaskCodeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, project_id, task_id):
         try:
-            task = Task.objects.get(
-                id=task_id, project_id=project_id, project__user=request.user
-            )
+            if request.user.is_superuser:
+                task = Task.objects.get(id=task_id, project_id=project_id)
+            else:
+                task = Task.objects.get(
+                    id=task_id,
+                    project_id=project_id,
+                    project__user=request.user,
+                )
         except Task.DoesNotExist:
             return Response({"error": "Task not found"}, status=404)
 
-        from .ai_utils import analyze_task_with_openai
+        description = request.data.get("description", task.description or "")
+        code_snippet = request.data.get("code_snippet", task.code_snippet or "")
 
-        # 🔥 Ask AI to FIX code
-        fixed_code = analyze_task_with_openai(
-            task.name, "Fix and improve this code", task.code_snippet
+        task.description = description
+        task.code_snippet = code_snippet
+        task.save()
+
+        fixed_code = fix_code_with_ai(code_snippet)
+
+        create_activity_log(
+            request,
+            "CODE_FIXED",
+            status_code=200,
+            message=f"Improved code generated for task: {task.name}",
+            project_name=task.project.name,
         )
 
         return Response({"fixed_code": fixed_code})
 
 
+# ==========================================================
+# OPEN PROJECT FILE
+# ==========================================================
 class ProjectFileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        file_name = urllib.parse.unquote(request.query_params.get("file"))
+        file_name = urllib.parse.unquote(request.query_params.get("file", ""))
+
+        if not file_name:
+            return Response({"error": "File name is required"}, status=400)
 
         try:
-            project = Project.objects.get(id=pk, user=request.user)
+            if request.user.is_superuser:
+                project = Project.objects.get(id=pk)
+            else:
+                project = Project.objects.get(id=pk, user=request.user)
         except Project.DoesNotExist:
             return Response({"error": "Project not found"}, status=404)
 
         zip_path = project.file.path
 
-        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        if not zipfile.is_zipfile(zip_path):
+            return Response({"error": "Invalid ZIP file"}, status=400)
 
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
             content = None
 
             for zip_file in zip_ref.namelist():
@@ -538,4 +720,96 @@ class ProjectFileView(APIView):
             if not content:
                 return Response({"error": "File not found"}, status=404)
 
+            create_activity_log(
+                request,
+                "FILE_OPENED",
+                status_code=200,
+                message=f"File opened: {file_name}",
+                project_name=project.name,
+            )
+
             return Response({"file": file_name, "content": content})
+
+
+# ==========================================================
+# DOWNLOAD PROJECT FILE
+# ==========================================================
+class ProjectFileDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        file_name = urllib.parse.unquote(request.query_params.get("file", ""))
+
+        if not file_name:
+            return Response({"error": "File name is required"}, status=400)
+
+        try:
+            if request.user.is_superuser:
+                project = Project.objects.get(id=pk)
+            else:
+                project = Project.objects.get(id=pk, user=request.user)
+        except Project.DoesNotExist:
+            return Response({"error": "Project not found"}, status=404)
+
+        zip_path = project.file.path
+
+        if not zipfile.is_zipfile(zip_path):
+            return Response({"error": "Invalid ZIP file"}, status=400)
+
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            matched_file = None
+
+            for zip_file in zip_ref.namelist():
+                if zip_file.strip() == file_name.strip():
+                    matched_file = zip_file
+                    break
+
+            if not matched_file:
+                return Response({"error": "File not found"}, status=404)
+
+            file_content = zip_ref.read(matched_file)
+            download_name = os.path.basename(matched_file)
+
+            response = HttpResponse(
+                file_content,
+                content_type="application/octet-stream",
+            )
+
+            response["Content-Disposition"] = f'attachment; filename="{download_name}"'
+
+            create_activity_log(
+                request,
+                "FILE_DOWNLOADED",
+                status_code=200,
+                message=f"File downloaded: {download_name}",
+                project_name=project.name,
+            )
+
+            return response
+
+
+# ==========================================================
+# DELETE TASK
+# ==========================================================
+class TaskDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, project_id, task_id):
+        try:
+            if request.user.is_superuser:
+                task = Task.objects.get(id=task_id, project_id=project_id)
+            else:
+                task = Task.objects.get(
+                    id=task_id,
+                    project_id=project_id,
+                    project__user=request.user,
+                )
+        except Task.DoesNotExist:
+            return Response({"error": "Task not found"}, status=404)
+
+        task_name = task.name
+        project_name = task.project.name
+
+        task.delete()
+
+        return Response({"message": "Task deleted successfully"})

@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     ArrowLeft,
     BarChart3,
-    Folder,
     Flame,
     RefreshCw,
     FileCode,
@@ -20,6 +19,8 @@ import {
     Gauge,
     X,
     ExternalLink,
+    Files,
+    Download,
 } from "lucide-react";
 
 // CODE HIGHLIGHTER
@@ -34,6 +35,45 @@ export default function ProjectResults() {
     const [loading, setLoading] = useState(true);
     const [collapsed, setCollapsed] = useState(false);
     const [showFilesPopup, setShowFilesPopup] = useState(false);
+
+    const CODE_EXTENSIONS = [
+        ".py",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".java",
+        ".cs",
+        ".cpp",
+        ".c",
+        ".html",
+        ".css",
+    ];
+
+    const getFileExtension = (fileName = "") => {
+        const cleanName = fileName.toLowerCase();
+        const lastDot = cleanName.lastIndexOf(".");
+        if (lastDot === -1) return "";
+        return cleanName.slice(lastDot);
+    };
+
+    const getAllProjectFilesCount = () => {
+        if (analysis?.files && Array.isArray(analysis.files)) {
+            return analysis.files.length;
+        }
+
+        return analysis?.total_project_files || analysis?.total_files || 0;
+    };
+
+    const getAnalyzedCodeFilesCount = () => {
+        if (analysis?.files && Array.isArray(analysis.files)) {
+            return analysis.files.filter((fileName) =>
+                CODE_EXTENSIONS.includes(getFileExtension(fileName))
+            ).length;
+        }
+
+        return analysis?.analyzed_code_files || analysis?.total_files || 0;
+    };
 
     useEffect(() => {
         const fetchResults = async () => {
@@ -85,6 +125,36 @@ export default function ProjectResults() {
 
     const openFile = (file) => {
         navigate(`/dashboard/student/projects/${id}/file?name=${encodeURIComponent(file)}`);
+    };
+
+    const downloadFile = async (file, event) => {
+        event.stopPropagation();
+
+        try {
+            const res = await API.get(
+                `/projects/${id}/file/download/?file=${encodeURIComponent(file)}`,
+                {
+                    responseType: "blob",
+                }
+            );
+
+            const fileName = file.split("/").pop() || "downloaded-file";
+
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement("a");
+
+            link.href = url;
+            link.setAttribute("download", fileName);
+
+            document.body.appendChild(link);
+            link.click();
+
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.log("DOWNLOAD FILE ERROR:", err.response?.data || err);
+            alert("File download failed. Please try again.");
+        }
     };
 
     // AI FORMATTER
@@ -210,6 +280,9 @@ export default function ProjectResults() {
     const projectFiles = analysis.files || [];
     const previewFiles = projectFiles.slice(0, 3);
 
+    const allProjectFiles = getAllProjectFilesCount();
+    const analyzedCodeFiles = getAnalyzedCodeFilesCount();
+
     return (
         <div className="min-h-screen bg-[#f5f8f6] text-slate-900">
             {/* ALL FILES POPUP */}
@@ -245,7 +318,7 @@ export default function ProjectResults() {
                                             All Project Files
                                         </h2>
                                         <p className="mt-1 text-xs font-semibold text-gray-400">
-                                            {projectFiles.length} files found in this project
+                                            {allProjectFiles} files found in this project
                                         </p>
                                     </div>
                                 </div>
@@ -263,34 +336,65 @@ export default function ProjectResults() {
                             <div className="max-h-[520px] overflow-y-auto px-6 py-5">
                                 {projectFiles.length > 0 ? (
                                     <div className="space-y-3">
-                                        {projectFiles.map((file, index) => (
-                                            <button
-                                                type="button"
-                                                key={index}
-                                                onClick={() => openFile(file)}
-                                                className="group flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-green-400/40 hover:bg-green-500/10"
-                                            >
-                                                <div className="flex min-w-0 items-center gap-3">
-                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-500/15 text-green-400">
-                                                        <FileCode size={22} />
+                                        {projectFiles.map((file, index) => {
+                                            const isCodeFile = CODE_EXTENSIONS.includes(
+                                                getFileExtension(file)
+                                            );
+
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={index}
+                                                    onClick={() => openFile(file)}
+                                                    className="group flex w-full items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:border-green-400/40 hover:bg-green-500/10"
+                                                >
+                                                    <div className="flex min-w-0 items-center gap-3">
+                                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-500/15 text-green-400">
+                                                            <FileCode size={22} />
+                                                        </div>
+
+                                                        <div className="min-w-0">
+                                                            <p className="break-all font-mono text-sm font-bold text-gray-100 group-hover:text-green-300">
+                                                                {file}
+                                                            </p>
+
+                                                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                                <span className="text-xs font-semibold text-gray-500">
+                                                                    Click to open file
+                                                                </span>
+
+                                                                <span
+                                                                    className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${isCodeFile
+                                                                        ? "bg-green-500/15 text-green-300"
+                                                                        : "bg-gray-500/15 text-gray-400"
+                                                                        }`}
+                                                                >
+                                                                    {isCodeFile
+                                                                        ? "Analyzed code file"
+                                                                        : "Project file"}
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                     </div>
 
-                                                    <div className="min-w-0">
-                                                        <p className="break-all font-mono text-sm font-bold text-gray-100 group-hover:text-green-300">
-                                                            {file}
-                                                        </p>
-                                                        <p className="mt-1 text-xs font-semibold text-gray-500">
-                                                            Click to open file
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                                    <div className="flex shrink-0 items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => downloadFile(file, event)}
+                                                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-500/15 text-green-300 transition hover:bg-green-500 hover:text-white"
+                                                            title="Download file"
+                                                        >
+                                                            <Download size={17} />
+                                                        </button>
 
-                                                <ExternalLink
-                                                    size={18}
-                                                    className="shrink-0 text-gray-500 transition group-hover:text-green-300"
-                                                />
-                                            </button>
-                                        ))}
+                                                        <ExternalLink
+                                                            size={18}
+                                                            className="text-gray-500 transition group-hover:text-green-300"
+                                                        />
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="rounded-3xl border border-dashed border-white/10 p-10 text-center">
@@ -397,17 +501,35 @@ export default function ProjectResults() {
                             </motion.section>
 
                             {/* STATS */}
-                            <section className="grid gap-6 md:grid-cols-4">
+                            <section className="grid gap-6 md:grid-cols-5">
                                 <div className="rounded-[28px] border border-white bg-white/90 p-6 shadow-xl shadow-green-900/5 backdrop-blur transition hover:-translate-y-1 hover:shadow-2xl">
                                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-100 text-green-700">
+                                        <Files size={25} />
+                                    </div>
+                                    <p className="text-sm font-semibold text-gray-500">
+                                        All Project Files
+                                    </p>
+                                    <h2 className="mt-2 text-3xl font-black text-gray-900">
+                                        {allProjectFiles}
+                                    </h2>
+                                    <p className="mt-2 text-xs font-semibold text-gray-400">
+                                        Every file inside ZIP
+                                    </p>
+                                </div>
+
+                                <div className="rounded-[28px] border border-white bg-white/90 p-6 shadow-xl shadow-green-900/5 backdrop-blur transition hover:-translate-y-1 hover:shadow-2xl">
+                                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
                                         <FileCode size={25} />
                                     </div>
                                     <p className="text-sm font-semibold text-gray-500">
-                                        Total Files
+                                        Analyzed Code Files
                                     </p>
                                     <h2 className="mt-2 text-3xl font-black text-gray-900">
-                                        {analysis.total_files}
+                                        {analyzedCodeFiles}
                                     </h2>
+                                    <p className="mt-2 text-xs font-semibold text-gray-400">
+                                        Only source code files
+                                    </p>
                                 </div>
 
                                 <div className="rounded-[28px] border border-white bg-white/90 p-6 shadow-xl shadow-green-900/5 backdrop-blur transition hover:-translate-y-1 hover:shadow-2xl">
@@ -418,7 +540,7 @@ export default function ProjectResults() {
                                         Total Lines
                                     </p>
                                     <h2 className="mt-2 text-3xl font-black text-gray-900">
-                                        {analysis.total_lines}
+                                        {analysis.total_lines || 0}
                                     </h2>
                                 </div>
 
@@ -430,7 +552,7 @@ export default function ProjectResults() {
                                         Duplicate Lines
                                     </p>
                                     <h2 className="mt-2 text-3xl font-black text-gray-900">
-                                        {analysis.duplicate_lines}
+                                        {analysis.duplicate_lines || 0}
                                     </h2>
                                 </div>
 
@@ -442,7 +564,7 @@ export default function ProjectResults() {
                                         Duplication %
                                     </p>
                                     <h2 className="mt-2 text-3xl font-black text-red-500">
-                                        {analysis.duplicate_percentage}%
+                                        {analysis.duplicate_percentage || 0}%
                                     </h2>
                                 </div>
                             </section>
@@ -453,10 +575,10 @@ export default function ProjectResults() {
                                     <div className="flex items-center gap-4">
                                         <div
                                             className={`flex h-14 w-14 items-center justify-center rounded-2xl ${status.color === "red"
-                                                    ? "bg-red-100 text-red-700"
-                                                    : status.color === "yellow"
-                                                        ? "bg-yellow-100 text-yellow-700"
-                                                        : "bg-green-100 text-green-700"
+                                                ? "bg-red-100 text-red-700"
+                                                : status.color === "yellow"
+                                                    ? "bg-yellow-100 text-yellow-700"
+                                                    : "bg-green-100 text-green-700"
                                                 }`}
                                         >
                                             {status.icon}
@@ -474,10 +596,10 @@ export default function ProjectResults() {
 
                                     <div
                                         className={`rounded-2xl px-5 py-3 text-sm font-bold ${status.color === "red"
-                                                ? "bg-red-50 text-red-700"
-                                                : status.color === "yellow"
-                                                    ? "bg-yellow-50 text-yellow-700"
-                                                    : "bg-green-50 text-green-700"
+                                            ? "bg-red-50 text-red-700"
+                                            : status.color === "yellow"
+                                                ? "bg-yellow-50 text-yellow-700"
+                                                : "bg-green-50 text-green-700"
                                             }`}
                                     >
                                         {status.title}
@@ -491,7 +613,7 @@ export default function ProjectResults() {
                                 <div className="mt-6">
                                     <div className="mb-2 flex items-center justify-between text-sm font-bold text-gray-700">
                                         <span>Duplication Level</span>
-                                        <span>{analysis.duplicate_percentage}%</span>
+                                        <span>{analysis.duplicate_percentage || 0}%</span>
                                     </div>
 
                                     <div className="h-4 overflow-hidden rounded-full bg-gray-100">
@@ -505,13 +627,31 @@ export default function ProjectResults() {
                                             }}
                                             transition={{ duration: 0.8 }}
                                             className={`h-full rounded-full ${status.color === "red"
-                                                    ? "bg-red-500"
-                                                    : status.color === "yellow"
-                                                        ? "bg-yellow-500"
-                                                        : "bg-green-500"
+                                                ? "bg-red-500"
+                                                : status.color === "yellow"
+                                                    ? "bg-yellow-500"
+                                                    : "bg-green-500"
                                                 }`}
                                         />
                                     </div>
+                                </div>
+
+                                <div className="mt-6 rounded-[24px] border border-dashed border-green-200 bg-gradient-to-br from-green-50 to-white p-5">
+                                    <p className="text-sm leading-7 text-gray-600">
+                                        This ZIP contains{" "}
+                                        <span className="font-black text-gray-900">
+                                            {allProjectFiles}
+                                        </span>{" "}
+                                        total project files. The system analyzed{" "}
+                                        <span className="font-black text-gray-900">
+                                            {analyzedCodeFiles}
+                                        </span>{" "}
+                                        source code files and found{" "}
+                                        <span className="font-black text-gray-900">
+                                            {analysis.duplicate_lines || 0}
+                                        </span>{" "}
+                                        duplicate lines.
+                                    </p>
                                 </div>
                             </section>
 
@@ -528,8 +668,8 @@ export default function ProjectResults() {
                                                 Project Files
                                             </h2>
                                             <p className="mt-1 text-sm text-gray-500">
-                                                Showing first {Math.min(3, projectFiles.length)} files.
-                                                Click See All to view the full project file list.
+                                                Showing first {Math.min(3, projectFiles.length)} files from{" "}
+                                                {allProjectFiles} total files. Click See All to view the full project file list.
                                             </p>
                                         </div>
                                     </div>
@@ -548,27 +688,47 @@ export default function ProjectResults() {
 
                                 {projectFiles.length > 0 ? (
                                     <div className="grid gap-3 md:grid-cols-3">
-                                        {previewFiles.map((file, index) => (
-                                            <button
-                                                type="button"
-                                                key={index}
-                                                onClick={() => openFile(file)}
-                                                className="group flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-green-200 hover:bg-green-50 hover:shadow-lg"
-                                            >
-                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100 text-green-700">
-                                                    <FileCode size={21} />
-                                                </div>
+                                        {previewFiles.map((file, index) => {
+                                            const isCodeFile = CODE_EXTENSIONS.includes(
+                                                getFileExtension(file)
+                                            );
 
-                                                <div className="min-w-0">
-                                                    <span className="block break-all font-mono text-sm font-bold text-gray-700 group-hover:text-green-700">
-                                                        {file}
-                                                    </span>
-                                                    <span className="mt-1 block text-xs font-semibold text-gray-400">
-                                                        Click to open
-                                                    </span>
-                                                </div>
-                                            </button>
-                                        ))}
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={index}
+                                                    onClick={() => openFile(file)}
+                                                    className="group flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-green-200 hover:bg-green-50 hover:shadow-lg"
+                                                >
+                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100 text-green-700">
+                                                        <FileCode size={21} />
+                                                    </div>
+
+                                                    <div className="min-w-0">
+                                                        <span className="block break-all font-mono text-sm font-bold text-gray-700 group-hover:text-green-700">
+                                                            {file}
+                                                        </span>
+
+                                                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                            <span className="text-xs font-semibold text-gray-400">
+                                                                Click to open
+                                                            </span>
+
+                                                            <span
+                                                                className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${isCodeFile
+                                                                    ? "bg-green-100 text-green-700"
+                                                                    : "bg-gray-100 text-gray-500"
+                                                                    }`}
+                                                            >
+                                                                {isCodeFile
+                                                                    ? "Analyzed"
+                                                                    : "Project file"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div className="rounded-3xl border border-dashed border-green-200 bg-gradient-to-br from-green-50 to-white p-8 text-center">
@@ -626,11 +786,15 @@ export default function ProjectResults() {
                                         </div>
 
                                         <h3 className="text-lg font-black text-gray-900">
-                                            No duplicate code found
+                                            {Number(analysis.duplicate_lines || 0) > 0
+                                                ? `${analysis.duplicate_lines} duplicate lines found`
+                                                : "No duplicate code found"}
                                         </h3>
 
                                         <p className="mt-2 text-sm text-gray-500">
-                                            Nice work. Your project looks clean.
+                                            {Number(analysis.duplicate_lines || 0) > 0
+                                                ? "These duplicates are small/simple lines, so no major repeated code block was detected."
+                                                : "Nice work. Your project looks clean."}
                                         </p>
                                     </div>
                                 )}

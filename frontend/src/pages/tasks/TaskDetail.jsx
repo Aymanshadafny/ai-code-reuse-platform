@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../../api/api";
 import DashboardLayout from "../../layouts/DashboardLayout";
@@ -21,6 +21,8 @@ import {
     Wand2,
     FileCode,
     Activity,
+    Download,
+    Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -46,6 +48,7 @@ export default function TaskDetail() {
     const [copiedAi, setCopiedAi] = useState(false);
 
     const [popup, setPopup] = useState(null);
+    const codeFileInputRef = useRef(null);
 
     const showPopup = (message, type = "success") => {
         setPopup({ message, type });
@@ -136,7 +139,10 @@ export default function TaskDetail() {
         setLoadingFix(true);
 
         try {
-            const res = await API.post(`/projects/${id}/tasks/${taskId}/fix/`);
+            const res = await API.post(`/projects/${id}/tasks/${taskId}/fix/`, {
+                description,
+                code_snippet: codeSnippet,
+            });
             setFixedCode(res.data.fixed_code || "");
             showPopup("Improved code generated successfully", "success");
         } catch (err) {
@@ -188,8 +194,8 @@ export default function TaskDetail() {
                 <div
                     key={index}
                     className={`flex gap-4 rounded-md px-3 py-[4px] ${isDuplicate
-                            ? "bg-red-500/15 text-red-300"
-                            : "text-slate-200 hover:bg-white/5"
+                        ? "bg-red-500/15 text-red-300"
+                        : "text-slate-200 hover:bg-white/5"
                         }`}
                 >
                     <span className="w-8 select-none text-right text-slate-500">
@@ -273,6 +279,156 @@ export default function TaskDetail() {
         if (popup?.type === "success") return "bg-green-100 text-green-600";
         if (popup?.type === "warning") return "bg-yellow-100 text-yellow-600";
         return "bg-red-100 text-red-600";
+    };
+    const detectCodeExtension = (code) => {
+        const cleanCode = code.trim();
+
+        if (
+            cleanCode.includes("import React") ||
+            cleanCode.includes("from \"react\"") ||
+            cleanCode.includes("from 'react'") ||
+            cleanCode.includes("export default") ||
+            cleanCode.includes("jsx")
+        ) {
+            return "jsx";
+        }
+
+        if (
+            cleanCode.includes("function ") ||
+            cleanCode.includes("const ") ||
+            cleanCode.includes("let ") ||
+            cleanCode.includes("var ") ||
+            cleanCode.includes("export ") ||
+            cleanCode.includes("import ")
+        ) {
+            return "js";
+        }
+
+        if (
+            cleanCode.includes("def ") ||
+            cleanCode.includes("import os") ||
+            cleanCode.includes("from ")
+        ) {
+            return "py";
+        }
+
+        if (
+            cleanCode.includes("<html") ||
+            cleanCode.includes("<div") ||
+            cleanCode.includes("</")
+        ) {
+            return "html";
+        }
+
+        if (
+            cleanCode.includes("{") &&
+            cleanCode.includes("}") &&
+            cleanCode.includes(":") &&
+            cleanCode.includes(";")
+        ) {
+            return "css";
+        }
+
+        if (
+            cleanCode.includes("public class") ||
+            cleanCode.includes("private ") ||
+            cleanCode.includes("System.out.println")
+        ) {
+            return "java";
+        }
+
+        return "txt";
+    };
+
+    const downloadImprovedCode = () => {
+        const codeToDownload = fixedOnlyCode || fixedCode;
+
+        if (!codeToDownload.trim()) {
+            showPopup("No improved code available to download", "warning");
+            return;
+        }
+
+        const extension = detectCodeExtension(codeToDownload);
+        const fileName = `improved-code.${extension}`;
+
+        const blob = new Blob([codeToDownload], {
+            type: "text/plain;charset=utf-8",
+        });
+
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showPopup(`Downloaded ${fileName}`, "success");
+    };
+    const ALLOWED_CODE_EXTENSIONS = [
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".py",
+        ".java",
+        ".html",
+        ".css",
+        ".cpp",
+        ".c",
+        ".cs",
+        ".php",
+        ".rb",
+        ".go",
+    ];
+
+    const isAllowedCodeFile = (fileName = "") => {
+        const lowerName = fileName.toLowerCase();
+
+        return ALLOWED_CODE_EXTENSIONS.some((ext) =>
+            lowerName.endsWith(ext)
+        );
+    };
+
+    const handleCodeFileUpload = async (event) => {
+        const selectedFiles = Array.from(event.target.files || []);
+
+        if (selectedFiles.length === 0) return;
+
+        const validFiles = selectedFiles.filter((file) =>
+            isAllowedCodeFile(file.name)
+        );
+
+        if (validFiles.length === 0) {
+            showPopup("Please upload valid code files only", "warning");
+            event.target.value = "";
+            return;
+        }
+
+        try {
+            const fileContents = await Promise.all(
+                validFiles.map(async (file) => {
+                    const content = await file.text();
+
+                    return `// ===== FILE: ${file.name} =====\n${content}`;
+                })
+            );
+
+            const finalCode = fileContents.join("\n\n");
+
+            // ✅ Replace old code with newly uploaded file code
+            setCodeSnippet(finalCode);
+
+            showPopup(`${validFiles.length} code file loaded into Code Snippet`, "success");
+
+            event.target.value = "";
+        } catch (error) {
+            console.log("FILE READ ERROR:", error);
+            showPopup("Failed to read file", "error");
+        }
     };
 
     const getPopupTitle = () => {
@@ -528,14 +684,34 @@ export default function TaskDetail() {
                                     </div>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() => copyText(codeSnippet, "original")}
-                                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-100 px-5 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-200"
-                                >
-                                    {copiedOriginal ? <Check size={17} /> : <Copy size={17} />}
-                                    {copiedOriginal ? "Copied" : "Copy"}
-                                </button>
+                                <div className="flex flex-wrap gap-3">
+                                    <input
+                                        ref={codeFileInputRef}
+                                        type="file"
+                                        multiple
+                                        accept=".js,.jsx,.ts,.tsx,.py,.java,.html,.css,.cpp,.c,.cs,.php,.rb,.go"
+                                        className="hidden"
+                                        onChange={handleCodeFileUpload}
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={() => codeFileInputRef.current?.click()}
+                                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-50 px-5 py-3 text-sm font-bold text-green-700 transition hover:bg-green-100"
+                                    >
+                                        <Upload size={17} />
+                                        Upload File
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => copyText(codeSnippet, "original")}
+                                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-100 px-5 py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-200"
+                                    >
+                                        {copiedOriginal ? <Check size={17} /> : <Copy size={17} />}
+                                        {copiedOriginal ? "Copied" : "Copy"}
+                                    </button>
+                                </div>
                             </div>
 
                             <textarea
@@ -748,14 +924,25 @@ export default function TaskDetail() {
                                     </div>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() => copyText(fixedOnlyCode || fixedCode, "fixed")}
-                                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/20"
-                                >
-                                    {copiedFixed ? <Check size={17} /> : <Copy size={17} />}
-                                    {copiedFixed ? "Copied" : "Copy"}
-                                </button>
+                                <div className="flex flex-wrap gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={downloadImprovedCode}
+                                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-green-600"
+                                    >
+                                        <Download size={17} />
+                                       
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => copyText(fixedOnlyCode || fixedCode, "fixed")}
+                                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/20"
+                                    >
+                                        {copiedFixed ? <Check size={17} /> : <Copy size={17} />}
+                                        {copiedFixed ? "Copied" : "Copy"}
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="h-[460px] overflow-auto rounded-[24px] border border-slate-800 bg-black p-5">
@@ -766,8 +953,10 @@ export default function TaskDetail() {
                                 </div>
 
                                 <div className="prose prose-sm prose-invert max-w-none font-mono leading-7 text-green-400">
-                                    {fixedCode ? (
-                                        <ReactMarkdown>{fixedCode}</ReactMarkdown>
+                                    {fixedOnlyCode ? (
+                                        <pre className="whitespace-pre-wrap break-words">
+                                            <code>{fixedOnlyCode}</code>
+                                        </pre>
                                     ) : (
                                         <div className="flex h-[330px] items-center justify-center text-center">
                                             <div>
@@ -831,8 +1020,8 @@ export default function TaskDetail() {
                                             <div
                                                 key={`before-${row.line}`}
                                                 className={`flex gap-3 rounded-md px-3 py-[4px] ${row.changed
-                                                        ? "bg-red-100 text-red-700"
-                                                        : "text-slate-700"
+                                                    ? "bg-red-100 text-red-700"
+                                                    : "text-slate-700"
                                                     }`}
                                             >
                                                 <span className="w-8 select-none text-right text-slate-400">
@@ -856,8 +1045,8 @@ export default function TaskDetail() {
                                             <div
                                                 key={`after-${row.line}`}
                                                 className={`flex gap-3 rounded-md px-3 py-[4px] ${row.changed
-                                                        ? "bg-emerald-900/60 text-emerald-300"
-                                                        : "text-slate-300"
+                                                    ? "bg-emerald-900/60 text-emerald-300"
+                                                    : "text-slate-300"
                                                     }`}
                                             >
                                                 <span className="w-8 select-none text-right text-slate-500">

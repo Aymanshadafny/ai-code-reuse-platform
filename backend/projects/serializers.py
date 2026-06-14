@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import Project, Task, AnalysisResult
-
+from .models import Project, Task, AnalysisResult, ActivityLog
 
 class ProjectSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source="user.username", read_only=True)
@@ -95,3 +94,21 @@ class AnalysisResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnalysisResult
         fields = "__all__"
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source="user.username", read_only=True)
+
+    class Meta:
+        model = ActivityLog
+        fields = [
+            "id",
+            "user",
+            "action",
+            "method",
+            "path",
+            "status_code",
+            "message",
+            "project_name",
+            "created_at",
+        ]
