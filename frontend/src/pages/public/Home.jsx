@@ -115,7 +115,7 @@ export default function Home() {
                         to="/register"
                         className="bg-[#4ADE80] text-black px-7 py-3 rounded-lg font-semibold hover:scale-105 hover:shadow-[0_0_25px_rgba(74,222,128,0.6)] transition"
                     >
-                        Start Experimenting 🚀
+                        Start Experimenting 
                     </Link>
 
                     <Link
@@ -931,7 +931,7 @@ export default function Home() {
                             className="relative mt-6 text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight"
                         >
                             <span className="text-white">Start experimenting with </span>
-                            <span className="text-[#86EFAC]">AI code reuse today 🚀</span>
+                            <span className="text-[#86EFAC]">AI code reuse today </span>
                         </motion.h2>
 
                         <motion.p

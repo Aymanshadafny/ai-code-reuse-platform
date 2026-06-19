@@ -7,6 +7,10 @@ import Contact from "./pages/public/Contact";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 
+// 🔐 Forgot Password Pages
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
+
 // 🔐 Dashboards
 import Dashboard from "./pages/dashboard/Dashboard";
 import StudentDashboard from "./pages/dashboard/StudentDashboard";
@@ -20,9 +24,9 @@ import AdminReports from "./pages/projects/AdminReports";
 import ProjectDetail from "./pages/projects/ProjectDetail";
 import ProjectResults from "./pages/projects/ProjectResults";
 import FileViewer from "./pages/projects/FileViewer";
-// ✅ FIXED: only ONE correct import
 import ProjectTasks from "./pages/projects/ProjectTasks";
 import TaskDetail from "./pages/tasks/TaskDetail";
+import ProfileSettings from "./pages/profile/ProfileSettings";
 
 // 🔒 Protection
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -38,6 +42,10 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* ================= FORGOT PASSWORD ================= */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* ================= SMART DASHBOARD ================= */}
         <Route
@@ -67,8 +75,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/profile-settings" element={<ProfileSettings />} />
 
-        {/* 🔥 PROJECT DETAIL */}
         <Route
           path="/dashboard/student/projects/:id"
           element={
@@ -78,7 +86,6 @@ function App() {
           }
         />
 
-        {/* 🔥 TASKS LIST */}
         <Route
           path="/dashboard/student/projects/:id/tasks"
           element={
@@ -88,7 +95,6 @@ function App() {
           }
         />
 
-        {/* 🔥 TASK DETAIL */}
         <Route
           path="/dashboard/student/projects/:id/tasks/:taskId"
           element={
@@ -98,7 +104,6 @@ function App() {
           }
         />
 
-        {/* 🔥 RESULTS */}
         <Route
           path="/dashboard/student/projects/:id/results"
           element={

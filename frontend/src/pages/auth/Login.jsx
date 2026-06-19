@@ -7,21 +7,21 @@ import Toast from "../../components/Toast";
 
 export default function Login() {
     const [form, setForm] = useState({
-        username: "",
+        email: "",
         password: "",
     });
 
     const [loading, setLoading] = useState(false);
     const [rememberMe, setRememberMe] = useState(true);
-    const navigate = useNavigate();
     const [toast, setToast] = useState(null);
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         const token = localStorage.getItem("access");
 
-        // 🚫 only redirect if NOT coming from login action
         if (token && !toast) {
-            navigate("/dashboard");
+            navigate("/dashboard/student");
         }
     }, [navigate, toast]);
 
@@ -30,20 +30,25 @@ export default function Login() {
         setLoading(true);
 
         try {
-            const res = await API.post("/auth/login/", form);
+            const res = await API.post("/auth/login/", {
+                username: form.email,
+                password: form.password,
+            });
 
             localStorage.setItem("access", res.data.access);
             localStorage.setItem("refresh", res.data.refresh);
 
-            // ✅ show toast
             setToast({
                 message: "Login successful 🚀",
                 type: "success",
             });
 
-            // ⏳ wait before redirect
             setTimeout(() => {
-                navigate("/dashboard");
+                if (res.data.role === "admin") {
+                    navigate("/dashboard/admin");
+                } else {
+                    navigate("/dashboard/student");
+                }
             }, 1200);
         } catch (err) {
             if (err.response?.data?.detail) {
@@ -64,7 +69,7 @@ export default function Login() {
 
     return (
         <div
-            className="min-h-screen overflow-hidden relative"
+            className="relative min-h-screen overflow-hidden"
             style={{
                 background: `
                     radial-gradient(circle at top left, rgba(74,222,128,0.16), transparent 22%),
@@ -81,28 +86,31 @@ export default function Login() {
                     onClose={() => setToast(null)}
                 />
             )}
+
             <Navbar />
 
-            {/* extra ambient glows */}
-            <div className="pointer-events-none absolute top-24 left-8 w-[320px] h-[320px] bg-[#22C55E]/10 blur-[120px] rounded-full" />
-            <div className="pointer-events-none absolute bottom-10 right-10 w-[320px] h-[320px] bg-[#86EFAC]/10 blur-[120px] rounded-full" />
-            <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#4ADE80]/5 blur-[140px] rounded-full" />
+            {/* Extra ambient glows */}
+            <div className="pointer-events-none absolute left-8 top-24 h-[320px] w-[320px] rounded-full bg-[#22C55E]/10 blur-[120px]" />
+            <div className="pointer-events-none absolute bottom-10 right-10 h-[320px] w-[320px] rounded-full bg-[#86EFAC]/10 blur-[120px]" />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4ADE80]/5 blur-[140px]" />
 
-            <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-28 pb-12">
+            <div className="flex min-h-screen items-center justify-center px-4 pb-12 pt-28 sm:px-6 lg:px-8">
                 <motion.div
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7 }}
                     className="w-full max-w-[1280px]"
                 >
-                    <div className="grid lg:grid-cols-2 bg-white/95 backdrop-blur-sm rounded-[36px] shadow-[0_30px_80px_rgba(0,0,0,0.10)] overflow-hidden border border-white/80 min-h-[720px]">
+                    <div className="grid min-h-[720px] overflow-hidden rounded-[36px] border border-white/80 bg-white/95 shadow-[0_30px_80px_rgba(0,0,0,0.10)] backdrop-blur-sm lg:grid-cols-2">
+
                         {/* LEFT SIDE */}
-                        <div className="flex items-center px-6 sm:px-10 md:px-14 py-12 md:py-16">
+                        <div className="flex items-center px-6 py-12 sm:px-10 md:px-14 md:py-16">
                             <div className="w-full max-w-[430px]">
+
                                 {/* Mini brand */}
-                                <div className="flex items-center gap-2 mb-12">
-                                    <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-[#16A34A] to-[#4ADE80]" />
-                                    <span className="text-[#111827] font-semibold tracking-tight">
+                                <div className="mb-12 flex items-center gap-2">
+                                    <span className="h-3.5 w-3.5 rounded-md bg-gradient-to-br from-[#16A34A] to-[#4ADE80]" />
+                                    <span className="font-semibold tracking-tight text-[#111827]">
                                         AI Code Reuse Platform
                                     </span>
                                 </div>
@@ -113,16 +121,16 @@ export default function Login() {
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: 0.12, duration: 0.6 }}
                                 >
-                                    <h1 className="text-4xl sm:text-5xl font-bold text-[#111827] leading-[1.08] tracking-tight">
+                                    <h1 className="text-4xl font-bold leading-[1.08] tracking-tight text-[#111827] sm:text-5xl">
                                         Hello,
                                         <br />
                                         Welcome Back
                                     </h1>
 
-                                    <p className="mt-5 text-[#6B7280] text-base leading-8 max-w-md">
-                                        Sign in to continue your AI experiments, review
-                                        analytics, compare results, and explore smarter
-                                        code reuse insights.
+                                    <p className="mt-5 max-w-md text-base leading-8 text-[#6B7280]">
+                                        Sign in with your registered email to continue your AI
+                                        experiments, review analytics, compare results, and explore
+                                        smarter code reuse insights.
                                     </p>
                                 </motion.div>
 
@@ -136,14 +144,17 @@ export default function Login() {
                                 >
                                     <div>
                                         <input
-                                            type="text"
-                                            placeholder="Username"
+                                            type="email"
+                                            placeholder="Email"
                                             required
-                                            value={form.username}
+                                            value={form.email}
                                             onChange={(e) =>
-                                                setForm({ ...form, username: e.target.value })
+                                                setForm({
+                                                    ...form,
+                                                    email: e.target.value,
+                                                })
                                             }
-                                            className="w-full h-14 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-all duration-300 focus:border-[#22C55E] focus:ring-4 focus:ring-[#22C55E]/10"
+                                            className="h-14 w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 text-[#111827] outline-none transition-all duration-300 placeholder:text-[#9CA3AF] focus:border-[#22C55E] focus:ring-4 focus:ring-[#22C55E]/10"
                                         />
                                     </div>
 
@@ -154,19 +165,24 @@ export default function Login() {
                                             required
                                             value={form.password}
                                             onChange={(e) =>
-                                                setForm({ ...form, password: e.target.value })
+                                                setForm({
+                                                    ...form,
+                                                    password: e.target.value,
+                                                })
                                             }
-                                            className="w-full h-14 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-all duration-300 focus:border-[#22C55E] focus:ring-4 focus:ring-[#22C55E]/10"
+                                            className="h-14 w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 text-[#111827] outline-none transition-all duration-300 placeholder:text-[#9CA3AF] focus:border-[#22C55E] focus:ring-4 focus:ring-[#22C55E]/10"
                                         />
                                     </div>
 
-                                    {/* options row */}
+                                    {/* Options row */}
                                     <div className="flex items-center justify-between gap-4 pt-1">
-                                        <label className="inline-flex items-center gap-2 text-sm text-[#6B7280] cursor-pointer select-none">
+                                        <label className="inline-flex cursor-pointer select-none items-center gap-2 text-sm text-[#6B7280]">
                                             <input
                                                 type="checkbox"
                                                 checked={rememberMe}
-                                                onChange={() => setRememberMe(!rememberMe)}
+                                                onChange={() =>
+                                                    setRememberMe(!rememberMe)
+                                                }
                                                 className="h-4 w-4 rounded border-[#D1D5DB] text-[#16A34A] focus:ring-[#22C55E]"
                                             />
                                             Remember me
@@ -174,23 +190,23 @@ export default function Login() {
 
                                         <Link
                                             to="/forgot-password"
-                                            className="text-sm text-[#6B7280] hover:text-[#16A34A] transition"
+                                            className="text-sm text-[#6B7280] transition hover:text-[#16A34A]"
                                         >
                                             Forgot Password?
                                         </Link>
                                     </div>
 
-                                    {/* button */}
+                                    {/* Button */}
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="mt-3 inline-flex h-14 min-w-[150px] items-center justify-center rounded-xl bg-gradient-to-r from-[#22C55E] to-[#4ADE80] px-8 text-[#071712] font-semibold shadow-[0_12px_30px_rgba(34,197,94,0.22)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_18px_40px_rgba(34,197,94,0.30)] disabled:opacity-60"
+                                        className="mt-3 inline-flex h-14 min-w-[150px] items-center justify-center rounded-xl bg-gradient-to-r from-[#22C55E] to-[#4ADE80] px-8 font-semibold text-[#071712] shadow-[0_12px_30px_rgba(34,197,94,0.22)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_18px_40px_rgba(34,197,94,0.30)] disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                         {loading ? "Signing In..." : "Sign In"}
                                     </button>
                                 </motion.form>
 
-                                {/* signup */}
+                                {/* Signup */}
                                 <motion.p
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -200,7 +216,7 @@ export default function Login() {
                                     Don&apos;t have an account?{" "}
                                     <Link
                                         to="/register"
-                                        className="font-semibold text-[#16A34A] hover:text-[#15803D] transition"
+                                        className="font-semibold text-[#16A34A] transition hover:text-[#15803D]"
                                     >
                                         Sign Up
                                     </Link>
@@ -213,55 +229,59 @@ export default function Login() {
                             initial={{ opacity: 0, x: 30 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.8, delay: 0.15 }}
-                            className="hidden lg:flex items-center justify-center p-6 md:p-8"
+                            className="hidden items-center justify-center p-6 md:p-8 lg:flex"
                         >
-                            <div className="relative w-full h-full min-h-[640px] rounded-[30px] overflow-hidden bg-gradient-to-br from-[#1B4332] via-[#14532D] to-[#22C55E]">
-                                {/* glow overlays */}
+                            <div className="relative h-full min-h-[640px] w-full overflow-hidden rounded-[30px] bg-gradient-to-br from-[#1B4332] via-[#14532D] to-[#22C55E]">
+
+                                {/* Glow overlays */}
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_25%)]" />
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_24%)]" />
 
-                                {/* clouds */}
-                                <div className="absolute -top-6 -left-8 w-48 h-24 bg-white rounded-full" />
-                                <div className="absolute top-6 left-20 w-28 h-16 bg-white rounded-full" />
-                                <div className="absolute top-14 right-20 w-24 h-14 bg-white rounded-full" />
-                                <div className="absolute top-0 right-0 w-40 h-28 bg-white rounded-full" />
-                                <div className="absolute bottom-0 left-0 w-40 h-20 bg-white rounded-full" />
-                                <div className="absolute bottom-10 right-8 w-36 h-16 bg-white rounded-full" />
+                                {/* Clouds */}
+                                <div className="absolute -left-8 -top-6 h-24 w-48 rounded-full bg-white" />
+                                <div className="absolute left-20 top-6 h-16 w-28 rounded-full bg-white" />
+                                <div className="absolute right-20 top-14 h-14 w-24 rounded-full bg-white" />
+                                <div className="absolute right-0 top-0 h-28 w-40 rounded-full bg-white" />
+                                <div className="absolute bottom-0 left-0 h-20 w-40 rounded-full bg-white" />
+                                <div className="absolute bottom-10 right-8 h-16 w-36 rounded-full bg-white" />
 
-                                {/* check bubble */}
-                                <div className="absolute top-28 left-16 bg-white rounded-[28px] shadow-[0_16px_30px_rgba(0,0,0,0.18)] px-7 py-5 after:absolute after:left-10 after:bottom-[-10px] after:w-5 after:h-5 after:bg-white after:rotate-45">
-                                    <span className="text-5xl text-[#22C55E] font-bold">✓</span>
+                                {/* Check bubble */}
+                                <div className="absolute left-16 top-28 rounded-[28px] bg-white px-7 py-5 shadow-[0_16px_30px_rgba(0,0,0,0.18)] after:absolute after:bottom-[-10px] after:left-10 after:h-5 after:w-5 after:rotate-45 after:bg-white">
+                                    <span className="text-5xl font-bold text-[#22C55E]">
+                                        ✓
+                                    </span>
                                 </div>
 
-                                {/* lock */}
+                                {/* Lock */}
                                 <div className="absolute right-10 top-[47%] -translate-y-1/2">
                                     <div className="relative">
-                                        <div className="w-24 h-24 border-[10px] border-white rounded-t-full border-b-0 mx-auto" />
-                                        <div className="w-36 h-40 bg-white rounded-[18px] shadow-[0_16px_30px_rgba(0,0,0,0.18)] flex items-center justify-center -mt-3">
-                                            <div className="w-10 h-10 rounded-full bg-[#22C55E] relative">
-                                                <div className="absolute left-1/2 top-full -translate-x-1/2 w-3 h-8 bg-[#22C55E] rounded-full" />
+                                        <div className="mx-auto h-24 w-24 rounded-t-full border-[10px] border-b-0 border-white" />
+                                        <div className="-mt-3 flex h-40 w-36 items-center justify-center rounded-[18px] bg-white shadow-[0_16px_30px_rgba(0,0,0,0.18)]">
+                                            <div className="relative h-10 w-10 rounded-full bg-[#22C55E]">
+                                                <div className="absolute left-1/2 top-full h-8 w-3 -translate-x-1/2 rounded-full bg-[#22C55E]" />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* phone */}
+                                {/* Phone */}
                                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[8deg]">
-                                    <div className="w-[260px] h-[470px] rounded-[38px] bg-[#071712] shadow-[0_30px_60px_rgba(0,0,0,0.35)] p-3">
-                                        <div className="relative w-full h-full rounded-[32px] overflow-hidden bg-gradient-to-b from-[#4ADE80] via-[#22C55E] to-[#15803D]">
-                                            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-16 h-2 bg-[#0B1D17]/50 rounded-full" />
-                                            <div className="absolute top-5 right-5 flex flex-col gap-1.5">
-                                                <span className="w-4 h-[2px] bg-white/80 rounded-full" />
-                                                <span className="w-4 h-[2px] bg-white/80 rounded-full" />
-                                                <span className="w-4 h-[2px] bg-white/80 rounded-full" />
+                                    <div className="h-[470px] w-[260px] rounded-[38px] bg-[#071712] p-3 shadow-[0_30px_60px_rgba(0,0,0,0.35)]">
+                                        <div className="relative h-full w-full overflow-hidden rounded-[32px] bg-gradient-to-b from-[#4ADE80] via-[#22C55E] to-[#15803D]">
+                                            <div className="absolute left-1/2 top-3 h-2 w-16 -translate-x-1/2 rounded-full bg-[#0B1D17]/50" />
+
+                                            <div className="absolute right-5 top-5 flex flex-col gap-1.5">
+                                                <span className="h-[2px] w-4 rounded-full bg-white/80" />
+                                                <span className="h-[2px] w-4 rounded-full bg-white/80" />
+                                                <span className="h-[2px] w-4 rounded-full bg-white/80" />
                                             </div>
 
-                                            {/* fingerprint area */}
+                                            {/* Fingerprint area */}
                                             <div className="absolute inset-0 flex items-center justify-center">
                                                 <div className="relative flex items-center justify-center">
-                                                    <div className="absolute w-44 h-44 border-4 border-white/15 rounded-[30px]" />
-                                                    <div className="absolute w-36 h-36 border-4 border-white/20 rounded-[28px]" />
-                                                    <div className="absolute w-28 h-28 border-4 border-white/25 rounded-[24px]" />
+                                                    <div className="absolute h-44 w-44 rounded-[30px] border-4 border-white/15" />
+                                                    <div className="absolute h-36 w-36 rounded-[28px] border-4 border-white/20" />
+                                                    <div className="absolute h-28 w-28 rounded-[24px] border-4 border-white/25" />
 
                                                     <svg
                                                         width="110"
@@ -270,29 +290,65 @@ export default function Login() {
                                                         fill="none"
                                                         className="relative z-10"
                                                     >
-                                                        <path d="M55 18C39 18 27 30 27 46V63" stroke="white" strokeWidth="4" strokeLinecap="round" />
-                                                        <path d="M55 28C44 28 36 36 36 47V66" stroke="white" strokeWidth="4" strokeLinecap="round" />
-                                                        <path d="M55 39C49 39 45 43 45 49V72" stroke="white" strokeWidth="4" strokeLinecap="round" />
-                                                        <path d="M55 18C71 18 83 30 83 46V63" stroke="white" strokeWidth="4" strokeLinecap="round" />
-                                                        <path d="M55 28C66 28 74 36 74 47V66" stroke="white" strokeWidth="4" strokeLinecap="round" />
-                                                        <path d="M55 39C61 39 65 43 65 49V72" stroke="white" strokeWidth="4" strokeLinecap="round" />
-                                                        <path d="M55 48V82" stroke="white" strokeWidth="4" strokeLinecap="round" />
+                                                        <path
+                                                            d="M55 18C39 18 27 30 27 46V63"
+                                                            stroke="white"
+                                                            strokeWidth="4"
+                                                            strokeLinecap="round"
+                                                        />
+                                                        <path
+                                                            d="M55 28C44 28 36 36 36 47V66"
+                                                            stroke="white"
+                                                            strokeWidth="4"
+                                                            strokeLinecap="round"
+                                                        />
+                                                        <path
+                                                            d="M55 39C49 39 45 43 45 49V72"
+                                                            stroke="white"
+                                                            strokeWidth="4"
+                                                            strokeLinecap="round"
+                                                        />
+                                                        <path
+                                                            d="M55 18C71 18 83 30 83 46V63"
+                                                            stroke="white"
+                                                            strokeWidth="4"
+                                                            strokeLinecap="round"
+                                                        />
+                                                        <path
+                                                            d="M55 28C66 28 74 36 74 47V66"
+                                                            stroke="white"
+                                                            strokeWidth="4"
+                                                            strokeLinecap="round"
+                                                        />
+                                                        <path
+                                                            d="M55 39C61 39 65 43 65 49V72"
+                                                            stroke="white"
+                                                            strokeWidth="4"
+                                                            strokeLinecap="round"
+                                                        />
+                                                        <path
+                                                            d="M55 48V82"
+                                                            stroke="white"
+                                                            strokeWidth="4"
+                                                            strokeLinecap="round"
+                                                        />
                                                     </svg>
                                                 </div>
                                             </div>
 
-                                            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-36 h-2 bg-white/50 rounded-full" />
-                                            <p className="absolute bottom-10 left-1/2 -translate-x-1/2 text-[11px] text-white/80 text-center w-[190px] leading-4">
+                                            <div className="absolute bottom-16 left-1/2 h-2 w-36 -translate-x-1/2 rounded-full bg-white/50" />
+
+                                            <p className="absolute bottom-10 left-1/2 w-[190px] -translate-x-1/2 text-center text-[11px] leading-4 text-white/80">
                                                 Secure access for your AI experiments and code reuse insights
                                             </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* floating small dots */}
-                                <div className="absolute left-20 bottom-24 w-3 h-3 rounded-full bg-white/80" />
-                                <div className="absolute left-28 bottom-36 w-2 h-2 rounded-full bg-white/70" />
-                                <div className="absolute right-36 top-40 w-2.5 h-2.5 rounded-full bg-white/80" />
+                                {/* Floating dots */}
+                                <div className="absolute bottom-24 left-20 h-3 w-3 rounded-full bg-white/80" />
+                                <div className="absolute bottom-36 left-28 h-2 w-2 rounded-full bg-white/70" />
+                                <div className="absolute right-36 top-40 h-2.5 w-2.5 rounded-full bg-white/80" />
                             </div>
                         </motion.div>
                     </div>

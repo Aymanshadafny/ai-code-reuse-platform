@@ -176,206 +176,208 @@ export default function AdminUsers() {
 
     return (
         <DashboardLayout>
-            <div className="min-h-screen bg-[#f6f8f7] px-3 py-5 sm:px-5 sm:py-8 lg:px-8">
-                {/* TOAST */}
-                <AnimatePresence>
-                    {toast.show && (
-                        <Toast
-                            message={toast.message}
-                            type={toast.type}
-                            onClose={closeToast}
-                        />
+            <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4 py-6 sm:px-6 lg:px-8">
+                <div className="mx-auto w-full max-w-[1250px]">
+                    {/* TOAST */}
+                    <AnimatePresence>
+                        {toast.show && (
+                            <Toast
+                                message={toast.message}
+                                type={toast.type}
+                                onClose={closeToast}
+                            />
+                        )}
+                    </AnimatePresence>
+
+                    {/* DELETE CONFIRMATION MODAL */}
+                    <DeleteUserModal
+                        open={deleteModal.open}
+                        user={deleteModal.user}
+                        deleting={deleting}
+                        onClose={closeDeleteModal}
+                        onConfirm={confirmDeleteUser}
+                    />
+
+                    {/* HERO HEADER */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 24 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45 }}
+                        className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#061a12] via-[#0b3b2a] to-[#157347] p-6 text-white shadow-2xl sm:p-8 lg:p-10"
+                    >
+                        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
+                        <div className="absolute -bottom-28 right-0 h-80 w-80 rounded-full bg-lime-300/20 blur-3xl" />
+                        <div className="absolute right-10 top-10 hidden h-24 w-24 rounded-full border border-white/20 lg:block" />
+                        <div className="absolute right-28 top-28 hidden h-10 w-10 rounded-full border border-white/20 lg:block" />
+
+                        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+                            <div>
+                                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/85 backdrop-blur-md">
+                                    <Sparkles size={16} />
+                                    Admin User Management
+                                </div>
+
+                                <h1 className="flex items-center gap-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
+                                    <Users className="hidden sm:block" size={42} />
+                                    Users Management
+                                </h1>
+
+                                <p className="mt-4 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
+                                    Monitor registered users, review project activity,
+                                    disable accounts, and manage platform users from one
+                                    clean admin workspace.
+                                </p>
+
+                                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                                    <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-emerald-900 shadow-lg">
+                                        <ShieldCheck size={18} />
+                                        Admin Access
+                                    </div>
+
+                                    <div className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white/85 backdrop-blur-md">
+                                        <Activity size={18} />
+                                        Live User Records
+                                    </div>
+                                </div>
+                            </div>
+
+                            <motion.div
+                                initial={{ opacity: 0, x: 24 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.15 }}
+                                className="rounded-[1.7rem] border border-white/15 bg-white/10 p-5 backdrop-blur-xl"
+                            >
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <p className="text-sm text-white/60">
+                                            Total Users
+                                        </p>
+
+                                        <h2 className="mt-2 text-4xl font-black">
+                                            {users.length}
+                                        </h2>
+
+                                        <p className="mt-2 text-sm text-white/60">
+                                            Registered accounts in your platform
+                                        </p>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white/15 p-4">
+                                        <UserRound size={34} />
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 grid grid-cols-2 gap-3">
+                                    <div className="rounded-2xl bg-white/10 p-4">
+                                        <p className="text-xs text-white/50">
+                                            Active
+                                        </p>
+                                        <h3 className="mt-1 text-2xl font-black">
+                                            {activeUsers}
+                                        </h3>
+                                    </div>
+
+                                    <div className="rounded-2xl bg-white/10 p-4">
+                                        <p className="text-xs text-white/50">
+                                            Disabled
+                                        </p>
+                                        <h3 className="mt-1 text-2xl font-black">
+                                            {disabledUsers}
+                                        </h3>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    </motion.section>
+
+                    {/* SUMMARY CARDS */}
+                    {!loading && (
+                        <section className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-4">
+                            <SummaryCard
+                                icon={<Users size={24} />}
+                                title="Total Users"
+                                value={users.length}
+                                text="All registered users"
+                            />
+
+                            <SummaryCard
+                                icon={<UserCheck size={24} />}
+                                title="Active Users"
+                                value={activeUsers}
+                                text="Users allowed to login"
+                            />
+
+                            <SummaryCard
+                                icon={<UserX size={24} />}
+                                title="Disabled Users"
+                                value={disabledUsers}
+                                text="Users blocked from login"
+                            />
+
+                            <SummaryCard
+                                icon={<Folder size={24} />}
+                                title="Total Projects"
+                                value={totalProjects}
+                                text="Projects created by users"
+                            />
+                        </section>
                     )}
-                </AnimatePresence>
 
-                {/* DELETE CONFIRMATION MODAL */}
-                <DeleteUserModal
-                    open={deleteModal.open}
-                    user={deleteModal.user}
-                    deleting={deleting}
-                    onClose={closeDeleteModal}
-                    onConfirm={confirmDeleteUser}
-                />
+                    {/* TOOLBAR */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="mt-8 rounded-[1.7rem] border border-white bg-white/85 p-4 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:p-5"
+                    >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <h2 className="text-xl font-black text-slate-900">
+                                    User Records
+                                </h2>
 
-                {/* HERO HEADER */}
-                <motion.section
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.45 }}
-                    className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#061a12] via-[#0b3b2a] to-[#157347] p-6 text-white shadow-2xl sm:p-8 lg:p-10"
-                >
-                    <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
-                    <div className="absolute -bottom-28 right-0 h-80 w-80 rounded-full bg-lime-300/20 blur-3xl" />
-                    <div className="absolute right-10 top-10 hidden h-24 w-24 rounded-full border border-white/20 lg:block" />
-                    <div className="absolute right-28 top-28 hidden h-10 w-10 rounded-full border border-white/20 lg:block" />
-
-                    <div className="relative z-10 grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
-                        <div>
-                            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/85 backdrop-blur-md">
-                                <Sparkles size={16} />
-                                Admin User Management
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Showing {filteredUsers.length} of {users.length} users
+                                </p>
                             </div>
 
-                            <h1 className="flex items-center gap-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                                <Users className="hidden sm:block" size={42} />
-                                Users Management
-                            </h1>
+                            <div className="relative w-full lg:max-w-md">
+                                <Search
+                                    size={18}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                                />
 
-                            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
-                                Monitor registered users, review project activity,
-                                disable accounts, and manage platform users from one
-                                clean admin workspace.
-                            </p>
-
-                            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                                <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-emerald-900 shadow-lg">
-                                    <ShieldCheck size={18} />
-                                    Admin Access
-                                </div>
-
-                                <div className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white/85 backdrop-blur-md">
-                                    <Activity size={18} />
-                                    Live User Records
-                                </div>
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="Search by username or email..."
+                                    className="w-full rounded-2xl border border-slate-100 bg-slate-50 py-3 pl-11 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                                />
                             </div>
                         </div>
+                    </motion.section>
 
-                        <motion.div
-                            initial={{ opacity: 0, x: 24 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.15 }}
-                            className="rounded-[1.7rem] border border-white/15 bg-white/10 p-5 backdrop-blur-xl"
-                        >
-                            <div className="flex items-center justify-between gap-4">
-                                <div>
-                                    <p className="text-sm text-white/60">
-                                        Total Users
-                                    </p>
-
-                                    <h2 className="mt-2 text-4xl font-black">
-                                        {users.length}
-                                    </h2>
-
-                                    <p className="mt-2 text-sm text-white/60">
-                                        Registered accounts in your platform
-                                    </p>
-                                </div>
-
-                                <div className="rounded-2xl bg-white/15 p-4">
-                                    <UserRound size={34} />
-                                </div>
-                            </div>
-
-                            <div className="mt-6 grid grid-cols-2 gap-3">
-                                <div className="rounded-2xl bg-white/10 p-4">
-                                    <p className="text-xs text-white/50">
-                                        Active
-                                    </p>
-                                    <h3 className="mt-1 text-2xl font-black">
-                                        {activeUsers}
-                                    </h3>
-                                </div>
-
-                                <div className="rounded-2xl bg-white/10 p-4">
-                                    <p className="text-xs text-white/50">
-                                        Disabled
-                                    </p>
-                                    <h3 className="mt-1 text-2xl font-black">
-                                        {disabledUsers}
-                                    </h3>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-                </motion.section>
-
-                {/* SUMMARY CARDS */}
-                {!loading && (
-                    <section className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-4">
-                        <SummaryCard
-                            icon={<Users size={24} />}
-                            title="Total Users"
-                            value={users.length}
-                            text="All registered users"
-                        />
-
-                        <SummaryCard
-                            icon={<UserCheck size={24} />}
-                            title="Active Users"
-                            value={activeUsers}
-                            text="Users allowed to login"
-                        />
-
-                        <SummaryCard
-                            icon={<UserX size={24} />}
-                            title="Disabled Users"
-                            value={disabledUsers}
-                            text="Users blocked from login"
-                        />
-
-                        <SummaryCard
-                            icon={<Folder size={24} />}
-                            title="Total Projects"
-                            value={totalProjects}
-                            text="Projects created by users"
-                        />
-                    </section>
-                )}
-
-                {/* TOOLBAR */}
-                <motion.section
-                    initial={{ opacity: 0, y: 18 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="mt-8 rounded-[1.7rem] border border-white bg-white/85 p-4 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:p-5"
-                >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                            <h2 className="text-xl font-black text-slate-900">
-                                User Records
-                            </h2>
-
-                            <p className="mt-1 text-sm text-slate-500">
-                                Showing {filteredUsers.length} of {users.length} users
-                            </p>
-                        </div>
-
-                        <div className="relative w-full lg:max-w-md">
-                            <Search
-                                size={18}
-                                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                            />
-
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Search by username or email..."
-                                className="w-full rounded-2xl border border-slate-100 bg-slate-50 py-3 pl-11 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-                            />
-                        </div>
-                    </div>
-                </motion.section>
-
-                {/* CONTENT */}
-                {loading ? (
-                    <LoadingGrid />
-                ) : filteredUsers.length === 0 ? (
-                    <EmptyState searchTerm={searchTerm} />
-                ) : (
-                    <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                        {filteredUsers.map((user, index) => (
-                            <UserCard
-                                key={user.id}
-                                user={user}
-                                index={index}
-                                onDelete={openDeleteModal}
-                                onToggleStatus={toggleUserStatus}
-                                statusLoadingId={statusLoadingId}
-                            />
-                        ))}
-                    </section>
-                )}
+                    {/* CONTENT */}
+                    {loading ? (
+                        <LoadingGrid />
+                    ) : filteredUsers.length === 0 ? (
+                        <EmptyState searchTerm={searchTerm} />
+                    ) : (
+                        <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                            {filteredUsers.map((user, index) => (
+                                <UserCard
+                                    key={user.id}
+                                    user={user}
+                                    index={index}
+                                    onDelete={openDeleteModal}
+                                    onToggleStatus={toggleUserStatus}
+                                    statusLoadingId={statusLoadingId}
+                                />
+                            ))}
+                        </section>
+                    )}
+                </div>
             </div>
         </DashboardLayout>
     );

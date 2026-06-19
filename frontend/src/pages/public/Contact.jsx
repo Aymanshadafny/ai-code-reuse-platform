@@ -1,8 +1,77 @@
+import { useState } from "react";
 import Navbar from "../../components/Navbar";
+import API from "../../api/api";
+import Toast from "../../components/Toast";
 
 export default function Contact() {
+    const [form, setForm] = useState({
+        first_name: "",
+        last_name: "",
+        email: "",
+        subject: "",
+        message: "",
+    });
+
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState(null);
+
+    const handleChange = (e) => {
+        setForm({
+            ...form,
+            [e.target.name]: e.target.value,
+        });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            await API.post("/auth/contact/", {
+                first_name: form.first_name,
+                last_name: form.last_name,
+                email: form.email,
+                subject: form.subject,
+                message: form.message,
+            });
+
+            setToast({
+                message: "Message sent to admin successfully 🚀",
+                type: "success",
+            });
+
+            setForm({
+                first_name: "",
+                last_name: "",
+                email: "",
+                subject: "",
+                message: "",
+            });
+        } catch (err) {
+            console.log("CONTACT ERROR:", err.response?.data || err);
+
+            setToast({
+                message:
+                    err.response?.data?.error ||
+                    err.response?.data?.detail ||
+                    "Message sending failed ❌",
+                type: "error",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen overflow-hidden bg-gradient-to-br from-green-50 via-white to-emerald-50 text-gray-900">
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
+
             <Navbar />
 
             {/* BACKGROUND DECORATION */}
@@ -34,7 +103,7 @@ export default function Contact() {
 
                             <p className="mt-6 max-w-xl text-base leading-8 text-green-50/80">
                                 Have a question, need support, or want help using the platform?
-                                Send us a message and our team will guide you as soon as possible.
+                                Send us a message and it will be delivered to the admin email.
                             </p>
 
                             <div className="mt-10 grid gap-4 sm:grid-cols-2">
@@ -43,10 +112,10 @@ export default function Contact() {
                                         📧
                                     </div>
                                     <p className="text-sm font-bold text-green-100/70">
-                                        Email
+                                        Admin Contact
                                     </p>
                                     <h3 className="mt-1 text-lg font-black">
-                                        support@aireuse.com
+                                        Email Support
                                     </h3>
                                 </div>
 
@@ -87,11 +156,11 @@ export default function Contact() {
                             </h2>
 
                             <p className="mt-2 text-sm leading-7 text-gray-500">
-                                Fill the form below and we will get back to you soon.
+                                Fill the form below and your message will be sent to the admin.
                             </p>
                         </div>
 
-                        <form className="space-y-5">
+                        <form onSubmit={handleSubmit} className="space-y-5">
                             <div className="grid gap-5 sm:grid-cols-2">
                                 <div>
                                     <label className="mb-2 block text-sm font-bold text-gray-700">
@@ -99,6 +168,10 @@ export default function Contact() {
                                     </label>
                                     <input
                                         type="text"
+                                        name="first_name"
+                                        value={form.first_name}
+                                        onChange={handleChange}
+                                        required
                                         placeholder="Enter first name"
                                         className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm outline-none transition focus:border-green-400 focus:bg-white focus:ring-4 focus:ring-green-100"
                                     />
@@ -110,6 +183,10 @@ export default function Contact() {
                                     </label>
                                     <input
                                         type="text"
+                                        name="last_name"
+                                        value={form.last_name}
+                                        onChange={handleChange}
+                                        required
                                         placeholder="Enter last name"
                                         className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm outline-none transition focus:border-green-400 focus:bg-white focus:ring-4 focus:ring-green-100"
                                     />
@@ -122,6 +199,10 @@ export default function Contact() {
                                 </label>
                                 <input
                                     type="email"
+                                    name="email"
+                                    value={form.email}
+                                    onChange={handleChange}
+                                    required
                                     placeholder="Enter your email"
                                     className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm outline-none transition focus:border-green-400 focus:bg-white focus:ring-4 focus:ring-green-100"
                                 />
@@ -133,6 +214,10 @@ export default function Contact() {
                                 </label>
                                 <input
                                     type="text"
+                                    name="subject"
+                                    value={form.subject}
+                                    onChange={handleChange}
+                                    required
                                     placeholder="How can we help?"
                                     className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm outline-none transition focus:border-green-400 focus:bg-white focus:ring-4 focus:ring-green-100"
                                 />
@@ -144,16 +229,21 @@ export default function Contact() {
                                 </label>
                                 <textarea
                                     rows="5"
+                                    name="message"
+                                    value={form.message}
+                                    onChange={handleChange}
+                                    required
                                     placeholder="Write your message here..."
                                     className="w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm outline-none transition focus:border-green-400 focus:bg-white focus:ring-4 focus:ring-green-100"
                                 ></textarea>
                             </div>
 
                             <button
-                                type="button"
-                                className="w-full rounded-2xl bg-green-500 px-6 py-4 font-black text-white shadow-xl shadow-green-500/25 transition hover:-translate-y-1 hover:bg-green-600"
+                                type="submit"
+                                disabled={loading}
+                                className="w-full rounded-2xl bg-green-500 px-6 py-4 font-black text-white shadow-xl shadow-green-500/25 transition hover:-translate-y-1 hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                Send Message →
+                                {loading ? "Sending..." : "Send Message →"}
                             </button>
                         </form>
                     </section>

@@ -202,141 +202,143 @@ export default function AdminProjects() {
             >
                 <Navbar />
 
-                <main className="px-4 pb-10 pt-[105px] sm:px-6 lg:px-10">
-                    {/* HERO HEADER */}
-                    <motion.section
-                        initial={{ opacity: 0, y: 24 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.45 }}
-                        className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#061a12] via-[#0b3b2a] to-[#157347] p-6 text-white shadow-2xl sm:p-8 lg:p-10"
-                    >
-                        {/* Background Glow */}
-                        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
-                        <div className="absolute -bottom-28 right-0 h-80 w-80 rounded-full bg-lime-300/20 blur-3xl" />
-                        <div className="absolute right-10 top-10 hidden h-24 w-24 rounded-full border border-white/20 lg:block" />
-                        <div className="absolute right-28 top-28 hidden h-10 w-10 rounded-full border border-white/20 lg:block" />
+                <main className="px-4 pb-10 pt-[105px] sm:px-6 lg:px-8">
+                    <div className="mx-auto w-full max-w-[1250px]">
+                        {/* HERO HEADER */}
+                        <motion.section
+                            initial={{ opacity: 0, y: 24 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.45 }}
+                            className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#061a12] via-[#0b3b2a] to-[#157347] p-6 text-white shadow-2xl sm:p-8 lg:p-10"
+                        >
+                            {/* Background Glow */}
+                            <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
+                            <div className="absolute -bottom-28 right-0 h-80 w-80 rounded-full bg-lime-300/20 blur-3xl" />
+                            <div className="absolute right-10 top-10 hidden h-24 w-24 rounded-full border border-white/20 lg:block" />
+                            <div className="absolute right-28 top-28 hidden h-10 w-10 rounded-full border border-white/20 lg:block" />
 
-                        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
-                            <div>
-                                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/85 backdrop-blur-md">
-                                    <Sparkles size={16} />
-                                    Admin Project Management
-                                </div>
-
-                                <h1 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                                    All Projects
-                                </h1>
-
-                                <p className="mt-4 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
-                                    Manage, monitor, download, and remove uploaded user
-                                    projects from one clean admin workspace.
-                                </p>
-
-                                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                                    <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-emerald-900 shadow-lg">
-                                        <ShieldCheck size={18} />
-                                        Admin Access
+                            <div className="relative z-10 grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
+                                <div>
+                                    <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/85 backdrop-blur-md">
+                                        <Sparkles size={16} />
+                                        Admin Project Management
                                     </div>
 
-                                    <div className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white/85 backdrop-blur-md">
-                                        <Archive size={18} />
-                                        {projects.length} Total Projects
+                                    <h1 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
+                                        All Projects
+                                    </h1>
+
+                                    <p className="mt-4 max-w-2xl text-sm leading-7 text-white/75 sm:text-base">
+                                        Manage, monitor, download, and remove uploaded user
+                                        projects from one clean admin workspace.
+                                    </p>
+
+                                    <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                                        <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-emerald-900 shadow-lg">
+                                            <ShieldCheck size={18} />
+                                            Admin Access
+                                        </div>
+
+                                        <div className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white/85 backdrop-blur-md">
+                                            <Archive size={18} />
+                                            {projects.length} Total Projects
+                                        </div>
                                     </div>
                                 </div>
+
+                                {/* Right Summary Card */}
+                                <motion.div
+                                    initial={{ opacity: 0, x: 24 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.15 }}
+                                    className="rounded-[1.7rem] border border-white/15 bg-white/10 p-5 backdrop-blur-xl"
+                                >
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm text-white/60">
+                                                Project Library
+                                            </p>
+
+                                            <h2 className="mt-2 text-4xl font-black">
+                                                {projects.length}
+                                            </h2>
+
+                                            <p className="mt-2 text-sm text-white/60">
+                                                Uploaded projects in the system
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-2xl bg-white/15 p-4">
+                                            <Folder size={34} />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 rounded-2xl bg-white/10 p-4">
+                                        <p className="text-sm leading-6 text-white/70">
+                                            You can download project ZIP files or remove
+                                            outdated/incorrect submissions directly from this
+                                            page.
+                                        </p>
+                                    </div>
+                                </motion.div>
                             </div>
+                        </motion.section>
 
-                            {/* Right Summary Card */}
-                            <motion.div
-                                initial={{ opacity: 0, x: 24 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: 0.15 }}
-                                className="rounded-[1.7rem] border border-white/15 bg-white/10 p-5 backdrop-blur-xl"
-                            >
-                                <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                        <p className="text-sm text-white/60">
-                                            Project Library
-                                        </p>
+                        {/* TOOLBAR */}
+                        <motion.section
+                            initial={{ opacity: 0, y: 18 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="mt-8 rounded-[1.7rem] border border-white bg-white/85 p-4 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:p-5"
+                        >
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div>
+                                    <h2 className="text-xl font-black text-slate-900">
+                                        Project Records
+                                    </h2>
 
-                                        <h2 className="mt-2 text-4xl font-black">
-                                            {projects.length}
-                                        </h2>
-
-                                        <p className="mt-2 text-sm text-white/60">
-                                            Uploaded projects in the system
-                                        </p>
-                                    </div>
-
-                                    <div className="rounded-2xl bg-white/15 p-4">
-                                        <Folder size={34} />
-                                    </div>
-                                </div>
-
-                                <div className="mt-6 rounded-2xl bg-white/10 p-4">
-                                    <p className="text-sm leading-6 text-white/70">
-                                        You can download project ZIP files or remove
-                                        outdated/incorrect submissions directly from this
-                                        page.
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Showing {filteredProjects.length} of{" "}
+                                        {projects.length} projects
                                     </p>
                                 </div>
-                            </motion.div>
-                        </div>
-                    </motion.section>
 
-                    {/* TOOLBAR */}
-                    <motion.section
-                        initial={{ opacity: 0, y: 18 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="mt-8 rounded-[1.7rem] border border-white bg-white/85 p-4 shadow-xl shadow-slate-200/70 backdrop-blur-xl sm:p-5"
-                    >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div>
-                                <h2 className="text-xl font-black text-slate-900">
-                                    Project Records
-                                </h2>
+                                <div className="relative w-full lg:max-w-md">
+                                    <Search
+                                        size={18}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                                    />
 
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Showing {filteredProjects.length} of{" "}
-                                    {projects.length} projects
-                                </p>
+                                    <input
+                                        type="text"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        placeholder="Search by project name or owner..."
+                                        className="w-full rounded-2xl border border-slate-100 bg-slate-50 py-3 pl-11 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                                    />
+                                </div>
                             </div>
+                        </motion.section>
 
-                            <div className="relative w-full lg:max-w-md">
-                                <Search
-                                    size={18}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                                />
-
-                                <input
-                                    type="text"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Search by project name or owner..."
-                                    className="w-full rounded-2xl border border-slate-100 bg-slate-50 py-3 pl-11 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100"
-                                />
-                            </div>
-                        </div>
-                    </motion.section>
-
-                    {/* CONTENT */}
-                    {loading ? (
-                        <LoadingGrid />
-                    ) : filteredProjects.length === 0 ? (
-                        <EmptyState searchTerm={searchTerm} />
-                    ) : (
-                        <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
-                            {filteredProjects.map((project, index) => (
-                                <ProjectCard
-                                    key={project.id}
-                                    project={project}
-                                    index={index}
-                                    onDelete={openDeleteModal}
-                                    onDownload={handleDownload}
-                                />
-                            ))}
-                        </section>
-                    )}
+                        {/* CONTENT */}
+                        {loading ? (
+                            <LoadingGrid />
+                        ) : filteredProjects.length === 0 ? (
+                            <EmptyState searchTerm={searchTerm} />
+                        ) : (
+                            <section className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
+                                {filteredProjects.map((project, index) => (
+                                    <ProjectCard
+                                        key={project.id}
+                                        project={project}
+                                        index={index}
+                                        onDelete={openDeleteModal}
+                                        onDownload={handleDownload}
+                                    />
+                                ))}
+                            </section>
+                        )}
+                    </div>
                 </main>
             </div>
         </div>
