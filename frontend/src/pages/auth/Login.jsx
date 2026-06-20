@@ -7,7 +7,7 @@ import Toast from "../../components/Toast";
 
 export default function Login() {
     const [form, setForm] = useState({
-        email: "",
+        login: "",
         password: "",
     });
 
@@ -31,7 +31,7 @@ export default function Login() {
 
         try {
             const res = await API.post("/auth/login/", {
-                username: form.email,
+                username: form.login,
                 password: form.password,
             });
 
@@ -102,11 +102,9 @@ export default function Login() {
                     className="w-full max-w-[1280px]"
                 >
                     <div className="grid min-h-[720px] overflow-hidden rounded-[36px] border border-white/80 bg-white/95 shadow-[0_30px_80px_rgba(0,0,0,0.10)] backdrop-blur-sm lg:grid-cols-2">
-
                         {/* LEFT SIDE */}
                         <div className="flex items-center px-6 py-12 sm:px-10 md:px-14 md:py-16">
                             <div className="w-full max-w-[430px]">
-
                                 {/* Mini brand */}
                                 <div className="mb-12 flex items-center gap-2">
                                     <span className="h-3.5 w-3.5 rounded-md bg-gradient-to-br from-[#16A34A] to-[#4ADE80]" />
@@ -128,9 +126,10 @@ export default function Login() {
                                     </h1>
 
                                     <p className="mt-5 max-w-md text-base leading-8 text-[#6B7280]">
-                                        Sign in with your registered email to continue your AI
-                                        experiments, review analytics, compare results, and explore
-                                        smarter code reuse insights.
+                                        Sign in with your registered email or username to
+                                        continue your AI experiments, review analytics,
+                                        compare results, and explore smarter code reuse
+                                        insights.
                                     </p>
                                 </motion.div>
 
@@ -144,14 +143,14 @@ export default function Login() {
                                 >
                                     <div>
                                         <input
-                                            type="email"
-                                            placeholder="Email"
+                                            type="text"
+                                            placeholder="Email or Username"
                                             required
-                                            value={form.email}
+                                            value={form.login}
                                             onChange={(e) =>
                                                 setForm({
                                                     ...form,
-                                                    email: e.target.value,
+                                                    login: e.target.value,
                                                 })
                                             }
                                             className="h-14 w-full rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] px-4 text-[#111827] outline-none transition-all duration-300 placeholder:text-[#9CA3AF] focus:border-[#22C55E] focus:ring-4 focus:ring-[#22C55E]/10"
@@ -232,7 +231,6 @@ export default function Login() {
                             className="hidden items-center justify-center p-6 md:p-8 lg:flex"
                         >
                             <div className="relative h-full min-h-[640px] w-full overflow-hidden rounded-[30px] bg-gradient-to-br from-[#1B4332] via-[#14532D] to-[#22C55E]">
-
                                 {/* Glow overlays */}
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_25%)]" />
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.12),transparent_24%)]" />
